@@ -27,13 +27,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-app.use("/api/v1/auth", AuthRoutes);
+app.use("/api/auth", AuthRoutes);
 
 // Basic route
 app.get("/", async (req: Request, res: Response) => {
 	res.status(httpStatus.OK).json({
 		success: true,
-		message: "Welcome to PH Healthcare System Backend",
+		message: "Welcome to MediCare System Backend",
 	});
 });
 

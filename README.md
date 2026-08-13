@@ -67,13 +67,13 @@ You should see:
 
 ```
 Connected to the database successfully.
-Server is running on port 5000
+Server is running on port 8000
 ```
 
 Confirm it's up:
 
 ```bash
-curl http://localhost:5000/
+curl http://localhost:8000/
 # {"success":true,"message":"Welcome to PH Healthcare System Backend"}
 ```
 
@@ -142,7 +142,7 @@ Prisma's schema is split across multiple files, wired together by `prisma.config
 
 ## The API
 
-Base URL: `http://localhost:5000`
+Base URL: `http://localhost:8000`
 
 | Method | Path                          | Auth required | Body                         |
 | ------ | ----------------------------- | ------------- | ----------------------------- |
@@ -163,11 +163,11 @@ Every response from `sendResponse` (i.e. everything except the root route) has t
 `register` and `login` return `accessToken` and `refreshToken` two ways: in the JSON body, and as cookies. **Use the JSON body.** The cookies are set with `sameSite: "none"` but `secure: false` — that combination is invalid under the cookie spec, and modern browsers silently drop the cookie rather than send it. Grab `data.accessToken` from the response and send it yourself:
 
 ```bash
-curl -X POST http://localhost:5000/api/v1/auth/register \
+curl -X POST http://localhost:8000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"name":"Test Patient","email":"patient@example.com","password":"password123"}'
 
-curl http://localhost:5000/api/v1/auth/me \
+curl http://localhost:8000/api/auth/me \
   -H "Authorization: Bearer <accessToken from the response above>"
 ```
 
