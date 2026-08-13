@@ -1,15 +1,22 @@
+/** biome-ignore-all lint/style/useConst: <explanation> */
 import bcrypt from "bcryptjs";
 import type { JwtPayload, SignOptions } from "jsonwebtoken";
-import { Role, UserStatus } from "../../../generated/prisma/enums";
+import {
+	AuthProvider,
+	Role,
+	UserStatus,
+} from "../../../generated/prisma/enums";
 import config from "../../config";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../utils/jwt";
 import type {
-    IGooglePayload,
+	IGooglePayload,
 	ILoginUserPayload,
 	IRegisterPatientPayload,
 	IRequestUser,
 } from "./auth.interface";
+import { googleClient } from "../../lib/googleAuth";
+import type { TokenPayload } from "google-auth-library";
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
 	const { name, password } = payload;
@@ -89,7 +96,10 @@ const loginUser = async (payload: ILoginUserPayload) => {
 		throw new Error("User is deleted");
 	}
 
-	const isPasswordMatched = await bcrypt.compare(password, user.password);
+	const isPasswordMatched = await bcrypt.compare(
+		password,
+		user.password as string,
+	);
 
 	if (!isPasswordMatched) {
 		throw new Error("Invalid credentials");
@@ -190,13 +200,89 @@ const refreshToken = async (token: string) => {
 };
 
 const googleLogin = async (payload: IGooglePayload) => {
+	let googleIdTokenPayload: TokenPayload | undefined | null = null;
+	try {
+		const ticket = await googleClient.verifyIdToken({
+			idToken: payload.idToken,
+			audience: config.google_client_id,
+		});
 
-}
+		googleIdTokenPayload = ticket.getPayload();
+	} catch (error) {
+		console.log("Google ID token varification failed", error);
+		throw new Error("Google ID token varification failed");
+	}
+
+	if (!googleIdTokenPayload) {
+		throw new Error("Google ID token payload is empty");
+	}
+
+	if (!googleIdTokenPayload.email) {
+		throw new Error("Google ID token payload does not contain email");
+	}
+
+	if (!googleIdTokenPayload.name) {
+		throw new Error("Google ID token payload does not contain name");
+	}
+
+	const isPatientExists = await prisma.user.findUnique({
+		where: {
+			email: googleIdTokenPayload.email,
+			role: Role.PATIENT,
+			googleid: googleIdTokenPayload.sub,
+		},
+	});
+
+	let user = isPatientExists;
+
+	if (!user) {
+		user = await prisma.user.create({
+			data: {
+				name: googleIdTokenPayload.name,
+				email: googleIdTokenPayload.email,
+				role: Role.PATIENT,
+				googleid: googleIdTokenPayload.sub,
+				authProivider: AuthProvider.GOOGLE,
+				emailVerified: true,
+				patient: {
+					create: {
+						name: googleIdTokenPayload.name,
+						email: googleIdTokenPayload.email,
+					},
+				},
+			},
+		});
+	}
+
+	const jwtPayload = {
+		userId: user.id,
+		name: user.name,
+		email: user.email,
+		role: user.role,
+	};
+
+	const accessToken = jwtUtils.createToken(
+		jwtPayload,
+		config.jwt_access_secret,
+		config.jwt_access_expires_in as SignOptions,
+	);
+
+	const refreshToken = jwtUtils.createToken(
+		jwtPayload,
+		config.jwt_refresh_secret,
+		config.jwt_refresh_expires_in as SignOptions,
+	);
+
+	return {
+		accessToken,
+		refreshToken,
+	};
+};
 
 export const AuthService = {
 	registerPatient,
 	loginUser,
 	getMe,
 	refreshToken,
-	googleLogin
+	googleLogin,
 };

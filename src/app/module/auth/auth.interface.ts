@@ -19,5 +19,5 @@ export interface IRequestUser {
 }
 
 export interface IGooglePayload {
-	idToken : string;
+	idToken: string;
 }
