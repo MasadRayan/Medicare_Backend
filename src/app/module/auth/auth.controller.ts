@@ -30,7 +30,7 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
 		message: "Patient registered successfully",
 		data: {
 			accessToken,
-			refreshToken,
+			refreshToken, 
 			user,
 			patient,
 		},
@@ -113,9 +113,23 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
 	});
 });
 
+const googleLogin = catchAsync(async (req: Request, res: Response) => {
+	const payload = req.body;
+	const result = await AuthService.googleLogin(payload);
+
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "User logged in successfully",
+		data: result,
+	});
+
+})
+
 export const AuthController = {
 	registerPatient,
 	loginUser,
 	getMe,
 	refreshToken,
+	googleLogin
 };

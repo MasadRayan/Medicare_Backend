@@ -5,6 +5,7 @@ import config from "../../config";
 import { prisma } from "../../lib/prisma";
 import { jwtUtils } from "../../utils/jwt";
 import type {
+    IGooglePayload,
 	ILoginUserPayload,
 	IRegisterPatientPayload,
 	IRequestUser,
@@ -188,9 +189,14 @@ const refreshToken = async (token: string) => {
 	};
 };
 
+const googleLogin = async (payload: IGooglePayload) => {
+
+}
+
 export const AuthService = {
 	registerPatient,
 	loginUser,
 	getMe,
 	refreshToken,
+	googleLogin
 };
