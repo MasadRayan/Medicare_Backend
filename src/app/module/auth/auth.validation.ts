@@ -20,6 +20,13 @@ import { z } from "zod";
     .optional(),
 });
 
-export const PatientValication = {
+
+const PatientLoginZodSchema = z.object({
+  email: z.email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const UserValidation = {
     PatientRegistrationZodSchema,
+    PatientLoginZodSchema
 }
