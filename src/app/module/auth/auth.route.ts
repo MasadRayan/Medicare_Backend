@@ -2,10 +2,15 @@ import { Router } from "express";
 import { Role } from "../../../generated/prisma/enums";
 import { auth } from "../../middleware/checkAuth";
 import { AuthController } from "./auth.controller";
+import { PatientValication } from "./auth.validation";
+import { validateRequest } from "../../middleware/validateRequest";
 
 const router = Router();
 
-router.post("/register", AuthController.registerPatient);
+
+
+
+router.post("/register", validateRequest(PatientValication.PatientRegistrationZodSchema), AuthController.registerPatient);
 router.post("/login", AuthController.loginUser);
 router.get(
 	"/me",
