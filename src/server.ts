@@ -1,7 +1,11 @@
 import app from "./app";
 import config from "./app/config";
 import { prisma } from "./app/lib/prisma";
-import { seedSuperAdmin, seedTesterAdmin, seedTesterDoctor } from "./app/utils/seed";
+import {
+	seedSuperAdmin,
+	seedTesterAdmin,
+	seedTesterDoctor,
+} from "./app/utils/seed";
 
 const PORT = config.port;
 
