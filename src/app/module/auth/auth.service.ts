@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/style/useConst: <explanation> */
+/** biome-ignore-all lint/style/useConst: needed for mutable variables in this file */
 import bcrypt from "bcryptjs";
 import type { JwtPayload, SignOptions } from "jsonwebtoken";
 import {
@@ -329,10 +329,18 @@ const googleLogin = async (payload: IGooglePayload) => {
 	};
 };
 
+const forgetPasseord = async (payload: any) => {
+
+}
+ 
+const resetPassword = async (payload: any) => {}
+
 export const AuthService = {
 	registerPatient,
 	loginUser,
 	getMe,
 	refreshToken,
 	googleLogin,
+	forgetPasseord,
+	resetPassword
 };
