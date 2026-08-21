@@ -31,7 +31,7 @@ const ForgetPasswordZodSchema = z.object({
 
 const ResetPasswordZodSchema = z.object({
 	email: z.email("Invalid email address"),
-	password: z
+	newPassword: z
 		.string()
 		.min(5, "Password must be at least 5 characters long")
 		.regex(/[A-Z]/, "Password must contain at least one uppercase letter")
