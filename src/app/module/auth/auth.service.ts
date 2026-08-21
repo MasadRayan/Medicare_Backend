@@ -371,16 +371,22 @@ const forgetPasseord = async (payload: IForgetPasswordPayload) => {
 
 	const key = `forget-password-otp:${isUserExists.email}`;
 
+	const expirationSeconds = 5 * 60; // 5 minutes
+
 	await redisClient.set(key, otp, {
 		expiration: {
 			type: "EX",
-			value: 5 * 60,
+			value: expirationSeconds,
 		}
 	})
 
 	const templetePath = path.join(process.cwd(), "src/app/templates/forget-password.ejs");
 
-	const html =await ejs.renderFile(templetePath, { otp });
+	const html =await ejs.renderFile(templetePath, { 
+		name: isUserExists.name,
+		otp ,
+		expirationMinutes: expirationSeconds / 60
+	});
 
 	await transporter.sendMail({
 		from: config.email_sender,
@@ -443,11 +449,17 @@ const resetPassword = async (payload: IResetPasswordPayload) => {
 	})
 	await redisClient.del([key]);
 
+	const templetePath = path.join(process.cwd(), "src/app/templates/reset-password-success.ejs");
+
+	const html =await ejs.renderFile(templetePath, { 
+		name: isUserExists.name,
+	});
+
 	await transporter.sendMail({
 		from: config.email_sender,
 		to: isUserExists.email,
 		subject: "Password Reset Successful",
-		html: `<p>Your password has been reset successfully.</p>`,
+		html
 	})
 
 }
