@@ -88,10 +88,6 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
     subject: "Email Verification OTP",
     html,
   });
-
-  /**
-	 
-	 */
 };
 
 const verifyPatientEmail = async (payload: IverifyEmailPayload) => {
@@ -132,59 +128,81 @@ const verifyPatientEmail = async (payload: IverifyEmailPayload) => {
 
   const patientRegistrationKey = `User-Registration-data:${email}`;
   const patientRegistrationDataString = await redisClient.get(
-	patientRegistrationKey,
+    patientRegistrationKey,
   );
 
   if (!patientRegistrationDataString) {
-	throw new Error("Patient registration data not found");
+    throw new Error("Patient registration data not found");
   }
 
-  const patientDataPayload : IRegisterPatientPayload = JSON.parse(patientRegistrationDataString)
-
+  const patientDataPayload: IRegisterPatientPayload = JSON.parse(
+    patientRegistrationDataString,
+  );
 
   const createdUser = await prisma.user.create({
-		data: {
-			name : patientDataPayload.name,
-			email: patientDataPayload.email,
-			password: patientDataPayload.password,
-			role: Role.PATIENT,
-			status: UserStatus.ACTIVE,
-			emailVerified: true,
-			patient: {
-				create: { name : patientDataPayload.name,
-			email: patientDataPayload.email, contactNumber: patientDataPayload?.patient?.contactNumber },
-			},
-		},
-		omit: { password: true },
-		include: { patient: true },
-	});
+    data: {
+      name: patientDataPayload.name,
+      email: patientDataPayload.email,
+      password: patientDataPayload.password,
+      role: Role.PATIENT,
+      status: UserStatus.ACTIVE,
+      emailVerified: true,
+      patient: {
+        create: {
+          name: patientDataPayload.name,
+          email: patientDataPayload.email,
+          contactNumber: patientDataPayload?.patient?.contactNumber,
+        },
+      },
+    },
+    omit: { password: true },
+    include: { patient: true },
+  });
 
-	const { patient, ...user } = createdUser;
-	const jwtPayload = {
-		userId: user.id,
-		name: user.name,
-		email: user.email,
-		role: user.role,
-	};
+  await redisClient.del([patientRegistrationKey]);
 
-	const accessToken = jwtUtils.createToken(
-		jwtPayload,
-		config.jwt_access_secret,
-		config.jwt_access_expires_in as SignOptions,
-	);
+  const templetePath = path.join(
+    process.cwd(),
+    "src/app/templates/patient-welcome-email.ejs",
+  );
 
-	const refreshToken = jwtUtils.createToken(
-		jwtPayload,
-		config.jwt_refresh_secret,
-		config.jwt_refresh_expires_in as SignOptions,
-	);
+  const html = await ejs.renderFile(templetePath, {
+    name: createdUser.name,
+  });
 
-	return {
-		user,
-		patient,
-		accessToken,
-		refreshToken,
-	};
+  await transporter.sendMail({
+    from: config.email_sender,
+    to: createdUser.email,
+    subject: "Welcome to Medi care System",
+    html,
+  });
+
+  const { patient, ...user } = createdUser;
+  const jwtPayload = {
+    userId: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
+
+  const accessToken = jwtUtils.createToken(
+    jwtPayload,
+    config.jwt_access_secret,
+    config.jwt_access_expires_in as SignOptions,
+  );
+
+  const refreshToken = jwtUtils.createToken(
+    jwtPayload,
+    config.jwt_refresh_secret,
+    config.jwt_refresh_expires_in as SignOptions,
+  );
+
+  return {
+    user,
+    patient,
+    accessToken,
+    refreshToken,
+  };
 };
 
 const loginUser = async (payload: ILoginUserPayload) => {
@@ -400,6 +418,21 @@ const googleLogin = async (payload: IGooglePayload) => {
           },
         },
       });
+      const templetePath = path.join(
+        process.cwd(),
+        "src/app/templates/patient-welcome-email.ejs",
+      );
+
+      const html = await ejs.renderFile(templetePath, {
+        name: user.name,
+      });
+
+      await transporter.sendMail({
+        from: config.email_sender,
+        to: user.email,
+        subject: "Welcome to Medi care System",
+        html,
+      });
     }
   }
 
@@ -582,5 +615,5 @@ export const AuthService = {
   googleLogin,
   forgetPasseord,
   resetPassword,
-  verifyPatientEmail
+  verifyPatientEmail,
 };
