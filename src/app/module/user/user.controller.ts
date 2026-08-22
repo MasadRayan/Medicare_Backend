@@ -2,18 +2,23 @@ import type { Request, Response } from "express";
 import { catchAsync } from "../../utils/catchAsync";
 import { sendResponse } from "../../utils/sendResponse";
 import httpStatus from "http-status";
+import { UserService } from "./user.service";
 
 const uploadProfileImage = catchAsync(async (req: Request, res: Response) => {
-  console.log(req.file)
-  
-    sendResponse(res, {
+  if (!req.file) {
+    throw new Error("No file uploaded");
+  }
+  const userId = req.user?.userId as string;
+  await UserService.uploadProfileImage(req.file?.buffer, userId);
+
+  sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: "User registered successfully",
+    message: "Profile image uploaded successfully",
     data: {},
   });
 });
 
-export const userController = {
+export const UserController = {
   uploadProfileImage,
 };
