@@ -8,22 +8,35 @@ import { validateRequest } from "../../middleware/validateRequest";
 const router = Router();
 
 router.post(
-	"/register",
-	validateRequest(UserValidation.PatientRegistrationZodSchema),
-	AuthController.registerPatient,
+  "/register",
+  validateRequest(UserValidation.PatientRegistrationZodSchema),
+  AuthController.registerPatient,
 );
 router.post(
-	"/login",
-	validateRequest(UserValidation.PatientLoginZodSchema),
-	AuthController.loginUser,
+  "/login",
+  validateRequest(UserValidation.PatientLoginZodSchema),
+  AuthController.loginUser,
 );
 router.get(
-	"/me",
-	auth(Role.ADMIN, Role.DOCTOR, Role.PATIENT, Role.SUPER_ADMIN),
-	AuthController.getMe,
+  "/me",
+  auth(Role.ADMIN, Role.DOCTOR, Role.PATIENT, Role.SUPER_ADMIN),
+  AuthController.getMe,
 );
 router.post("/refresh-token", AuthController.refreshToken);
 router.post("/google", AuthController.googleLogin);
-router.post("/forget-password", validateRequest(UserValidation.ForgetPasswordZodSchema),AuthController.forgetPassword);
-router.post("/reset-password", validateRequest(UserValidation.ResetPasswordZodSchema), AuthController.resetPassword);
+router.post(
+  "/forget-password",
+  validateRequest(UserValidation.ForgetPasswordZodSchema),
+  AuthController.forgetPassword,
+);
+router.post(
+  "/reset-password",
+  validateRequest(UserValidation.ResetPasswordZodSchema),
+  AuthController.resetPassword,
+);
+router.post(
+  "/verify-email",
+  validateRequest(UserValidation.VerifyEmailZodSchema),
+  AuthController.verifyPatient,
+);
 export const AuthRoutes = router;
