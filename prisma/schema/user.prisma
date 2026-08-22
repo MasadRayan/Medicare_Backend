@@ -6,6 +6,8 @@ model User {
   googleid           String?      @unique
   authProivider      AuthProvider @default(CREDENTIAL)
   emailVerified      Boolean      @default(false)
+  imageURL           String       @default("")
+  imagePublicId      String       @default("")
   role               Role         @default(PATIENT)
   status             UserStatus   @default(ACTIVE)
   needPasswordChange Boolean      @default(false)
