@@ -12,6 +12,7 @@ import { globalErrorHandler } from "./app/middleware/globalErrorHandler";
 import { notFound } from "./app/middleware/notFound";
 import { AuthRoutes } from "./app/module/auth/auth.route";
 import { redisClient } from "./app/lib/redis";
+import { userRoutes } from "./app/module/user/user.route";
 
 const app: Application = express();
 
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/auth", AuthRoutes);
+app.use("/api/user", userRoutes);
 
 app.get("/test", async (req: Request, res: Response, next: NextFunction) => {
 	try {
@@ -40,9 +42,7 @@ app.get("/test", async (req: Request, res: Response, next: NextFunction) => {
 				value: 300,
 			}
 		});
-		
-
-
+	
 		res.status(httpStatus.OK).json({
 		success: true,
 		message: "Test route is working",
