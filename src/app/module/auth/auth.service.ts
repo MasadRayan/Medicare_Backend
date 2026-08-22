@@ -39,8 +39,51 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 	}
 
 	const hashedPassword = await bcrypt.hash(password, 8);
+	const expirationSeconds = 5 * 60; // 5 minutes
 
-	const createdUser = await prisma.user.create({
+	const otpValue = crypto.randomInt(100000, 1000000).toString();
+	const otpKey = `User-Registration-otp:${email}`;
+
+	await redisClient.set(otpKey, otpValue, {
+		expiration: {
+			type: "EX",
+			value: expirationSeconds,
+		}
+	})
+
+	const patientRegistrationKey = `User-Registration-data:${email}`;
+	const patientRegistrationData = {
+		name,
+		email,
+		password: hashedPassword,
+		patient: patientData,
+	}
+
+	await redisClient.set(patientRegistrationKey, JSON.stringify(patientRegistrationData), {
+		expiration: {
+			type: "EX",
+			value: expirationSeconds,
+		}
+	})
+
+	const templetePath = path.join(process.cwd(), "src/app/templates/user-registration.ejs");
+
+	const html =await ejs.renderFile(templetePath, { 
+		name,
+		email,
+		otpValue ,
+		expirationMinutes: expirationSeconds / 60
+	});
+
+	await transporter.sendMail({
+		from: config.email_sender,
+		to: email,
+		subject: "Email Verification OTP",
+		html
+	})
+
+	/**
+	 * const createdUser = await prisma.user.create({
 		data: {
 			name,
 			email,
@@ -82,6 +125,8 @@ const registerPatient = async (payload: IRegisterPatientPayload) => {
 		accessToken,
 		refreshToken,
 	};
+	 */
+	
 };
 
 const loginUser = async (payload: ILoginUserPayload) => {
