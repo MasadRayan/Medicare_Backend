@@ -7,10 +7,10 @@ import { Role } from "../../../generated/prisma/enums";
 const router = Router();
 
 router.patch(
-  "/profile-image",
-  auth(Role.PATIENT, Role.DOCTOR, Role.ADMIN, Role.SUPER_ADMIN),
-  upload.single("profileImage"),
-  UserController.uploadProfileImage,
+	"/profile-image",
+	auth(Role.PATIENT, Role.DOCTOR, Role.ADMIN, Role.SUPER_ADMIN),
+	upload.single("profileImage"),
+	UserController.uploadProfileImage,
 );
 
 export const userRoutes = router;

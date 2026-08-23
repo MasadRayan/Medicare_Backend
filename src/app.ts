@@ -1,7 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, {
-    type NextFunction,
+	type NextFunction,
 	type Application,
 	type Request,
 	type Response,
@@ -35,24 +35,23 @@ app.use("/api/user", userRoutes);
 
 app.get("/test", async (req: Request, res: Response, next: NextFunction) => {
 	try {
-
 		await redisClient.set("forget-password-otp:user@gmail.com", "123456", {
 			expiration: {
 				type: "EX",
 				value: 300,
-			}
+			},
 		});
-	
+
 		res.status(httpStatus.OK).json({
-		success: true,
-		message: "Test route is working",
-	});
+			success: true,
+			message: "Test route is working",
+		});
 	} catch (error) {
 		res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-		success: false,
-		message: "Test route is not working",
-		data: error,
-	});
+			success: false,
+			message: "Test route is not working",
+			data: error,
+		});
 	}
 });
 

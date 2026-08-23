@@ -35,16 +35,16 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
 	sendResponse(res, {
 		statusCode: httpStatus.CREATED,
 		success: true,
-		message: "Email verification OTP sent successfully. Please check your email.",
+		message:
+			"Email verification OTP sent successfully. Please check your email.",
 		data: null,
 	});
 });
 
-
 const verifyPatient = catchAsync(async (req: Request, res: Response) => {
-	const payload = req.body
+	const payload = req.body;
 
-	const result =await AuthService.verifyPatientEmail(payload);
+	const result = await AuthService.verifyPatientEmail(payload);
 
 	const { accessToken, refreshToken, user, patient } = result;
 
@@ -69,7 +69,7 @@ const verifyPatient = catchAsync(async (req: Request, res: Response) => {
 			accessToken,
 			refreshToken,
 			user,
-			patient
+			patient,
 		},
 	});
 });
@@ -211,5 +211,5 @@ export const AuthController = {
 	googleLogin,
 	forgetPassword,
 	resetPassword,
-	verifyPatient
+	verifyPatient,
 };
