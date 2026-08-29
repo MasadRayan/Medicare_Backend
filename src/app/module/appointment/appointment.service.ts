@@ -1,3 +1,4 @@
+import { success } from "zod";
 import config from "../../config";
 import { getBkashIdToken } from "../../lib/bkash";
 
@@ -43,6 +44,15 @@ const bookAppointment = async () => {
   return bkashCreatePaymentResult;
 };
 
+const bookAppointmentPaymentCallback = async () => {
+  //business logic for handling payment callback will be here
+  return {
+    success: true,
+    message: "Payment callback handled successfully",
+  }
+}
+
 export const AppointmentService = {
   bookAppointment,
+  bookAppointmentPaymentCallback
 };

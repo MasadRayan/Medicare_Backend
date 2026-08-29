@@ -14,6 +14,19 @@ const bookAppointment = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const bookAppointmentPaymentCallback = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await AppointmentService.bookAppointmentPaymentCallback();
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Payment callback handled successfully",
+      data: result,
+    });
+  },
+);
+
 export const AppointmentController = {
   bookAppointment,
+  bookAppointmentPaymentCallback,
 };
