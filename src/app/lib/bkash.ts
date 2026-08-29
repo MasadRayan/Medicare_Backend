@@ -7,10 +7,15 @@ export const getBkashIdToken = async () => {
     const refreshToken = "bkash:refreshToken";
 
     let bkashIdToken = await redisClient.get(idToken);
-    const bkashIdTokenTtl = await redisClient.ttl(idToken);
-    let bkashRefreshToken = await redisClient.get(refreshToken);
+    const bkashIdTokenTTL = await redisClient.ttl(idToken);
+    const bkashRefreshToken = await redisClient.get(refreshToken);
+    const bkashRefreshTokenTTL = await redisClient.ttl(refreshToken);
 
-    if (bkashIdTokenTtl <= 600 && bkashRefreshToken) {
+    console.log({
+        bkashIdToken, bkashIdTokenTTL, bkashRefreshToken, bkashRefreshTokenTTL
+    })
+
+    if ((bkashIdTokenTTL <= 600 || !bkashIdToken) && bkashRefreshToken && bkashRefreshTokenTTL > 600) {
       const bkashRefreshTokenResponse = await fetch(
         `${config.bkash_base_url}tokenized/checkout/token/refresh`,
         {
@@ -29,6 +34,10 @@ export const getBkashIdToken = async () => {
         },
       );
 
+      if (!bkashRefreshTokenResponse) {
+        throw new Error("Bkash refresh token is invalid");
+      }
+
       const bkashRefreshTokenResult = await bkashRefreshTokenResponse.json();
 
       bkashIdToken = bkashRefreshTokenResult.id_token as string;
@@ -43,7 +52,7 @@ export const getBkashIdToken = async () => {
       return bkashIdToken;
     }
 
-    if (bkashIdToken) {
+    if (bkashIdTokenTTL > 600) {
       return bkashIdToken;
     }
 
