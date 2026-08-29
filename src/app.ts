@@ -37,7 +37,7 @@ app.use("/api/user", userRoutes);
 app.get("/test", async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const grantIdToken = await getBkashIdToken();
-		console.log(grantIdToken)
+		console.log(grantIdToken);
 
 		res.status(httpStatus.OK).json({
 			success: true,
