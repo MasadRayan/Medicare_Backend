@@ -1,4 +1,3 @@
-import { success } from "zod";
 import config from "../../config";
 import { getBkashIdToken } from "../../lib/bkash";
 
@@ -28,7 +27,7 @@ const bookAppointment = async () => {
         amount: "500",
         currency: "BDT",
         intent: "sale",
-        merchantInvoiceNumber: "Inv0124",
+        merchantInvoiceNumber: "Inv02",
       }),
     },
   );
@@ -44,15 +43,46 @@ const bookAppointment = async () => {
   return bkashCreatePaymentResult;
 };
 
-const bookAppointmentPaymentCallback = async () => {
-  //business logic for handling payment callback will be here
-  return {
-    success: true,
-    message: "Payment callback handled successfully",
+const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
+  const paymentId = query.paymentID;
+  const paymentStatus = query.status;
+
+  if (!paymentId || !paymentStatus) {
+    throw new Error("Missing required query parameters");
   }
-}
+
+  const bkashIdToken = await getBkashIdToken();
+  if (!bkashIdToken) {
+    throw new Error("Failed to get bKash ID token");
+  }
+
+  const bkashExecutePaymentResponse = await fetch(
+    `${config.bkash_base_url}/tokenized/checkout/execute`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: bkashIdToken,
+        "X-App-Key": config.bkash_app_key,
+      },
+      body: JSON.stringify({
+        paymentID: paymentId,
+      }),
+    },
+  );
+    const bkashExecutePaymentResult = await bkashExecutePaymentResponse.json();
+
+  if (!bkashExecutePaymentResponse.ok) {
+    throw new Error(
+      `Failed to execute bKash payment: ${bkashExecutePaymentResult.message}`,
+    );
+  }
+  console.log(bkashExecutePaymentResult)
+  return bkashExecutePaymentResult;
+};
 
 export const AppointmentService = {
   bookAppointment,
-  bookAppointmentPaymentCallback
+  bookAppointmentPaymentCallback,
 };
