@@ -17,7 +17,7 @@ export const getBkashIdToken = async () => {
 
     if ((bkashIdTokenTTL <= 600 || !bkashIdToken) && bkashRefreshToken && bkashRefreshTokenTTL > 600) {
       const bkashRefreshTokenResponse = await fetch(
-        `${config.bkash_base_url}tokenized/checkout/token/refresh`,
+        `${config.bkash_base_url}/tokenized/checkout/token/refresh`,
         {
           method: "POST",
           headers: {
@@ -34,7 +34,7 @@ export const getBkashIdToken = async () => {
         },
       );
 
-      if (!bkashRefreshTokenResponse) {
+      if (!bkashRefreshTokenResponse.ok) {
         throw new Error("Bkash refresh token is invalid");
       }
 
