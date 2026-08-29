@@ -11,13 +11,6 @@ export const getBkashIdToken = async () => {
 		const bkashRefreshToken = await redisClient.get(refreshToken);
 		const bkashRefreshTokenTTL = await redisClient.ttl(refreshToken);
 
-		console.log({
-			bkashIdToken,
-			bkashIdTokenTTL,
-			bkashRefreshToken,
-			bkashRefreshTokenTTL,
-		});
-
 		if (
 			(bkashIdTokenTTL <= 600 || !bkashIdToken) &&
 			bkashRefreshToken &&
