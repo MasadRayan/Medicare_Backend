@@ -8,7 +8,7 @@ model Doctor {
   qualifications     String
   experienceYears    Int
   bio                String?
-  consultationFee    Decimal                  @db.Decimal(10, 2)
+  consultationFee    Decimal?                  @db.Decimal(10, 2)
   contactNumber      String?
   verificationStatus DoctorverificationStatus @default(PENDING)
   rejectionReason    String?

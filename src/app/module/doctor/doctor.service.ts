@@ -4,10 +4,16 @@ import { cloudinary } from "../../lib/cloudinary";
 import bcrypt from "bcryptjs";
 import config from "../../config";
 import { Role } from "../../../generated/prisma/enums";
+import crypto from "crypto";
+import { redisClient } from "../../lib/redis";
+import path from "path";
+import ejs from "ejs";
+import { transporter } from "../../lib/nodemailer";
+import { IApplyAsDoctorPayload } from "./doctor.inetrface";
 
 
 const applyAsDoctor = async (
-	payload: any,
+	payload: IApplyAsDoctorPayload,
 	resume: Express.Multer.File | null,
 	additionalFiles: Express.Multer.File[],
 ) => {
@@ -108,9 +114,45 @@ const applyAsDoctor = async (
 		},
 	});
 
+	const expirationSeconds = 60 * 60; // 60 minutes
+
+	const otpValue = crypto.randomInt(100000, 1000000).toString();
+	const otpKey = `doctor-application-otp:${payload.user.email}`;
+
+	await redisClient.set(otpKey, otpValue, {
+		expiration: {
+			type: "EX",
+			value: expirationSeconds,
+		},
+	});
+
+	const templetePath = path.join(
+		process.cwd(),
+		"src/app/templates/user-registration.ejs",
+	);
+
+	const html = await ejs.renderFile(templetePath, {
+		name: payload.user.name,
+		email: payload.user.email,
+		otpValue,
+		expirationMinutes: expirationSeconds / 60,
+	});
+
+	await transporter.sendMail({
+		from: config.email_sender,
+		to: payload.user.email,
+		subject: "Email Verification OTP",
+		html,
+	});
+
 	return doctorApplication;
 };
 
+const verifyDoctorEmail = async (payload: any) => {
+
+}
+
 export const DoctorServices = {
 	applyAsDoctor,
+	verifyDoctorEmail
 };
