@@ -49,8 +49,24 @@ const bookAppointment = async (payload: any, user: RequestUser) => {
       );
     }
 
-    return bkashCreatePaymentResult;
+    //create a payment record in the database
+
+    await tx.payment.create({
+      data: {
+        merchantInvoiceNumber: bkashCreatePaymentResult.merchantInvoiceNumber,
+        amount: "1200",
+        currency: "BDT",
+        appointmentId: appointment.id,
+        bkashPaymentId: bkashCreatePaymentResult.paymentID,
+        gatewayResponse: bkashCreatePaymentResult,
+        payerReference: user.email,
+      },
+    });
+
+    return bkashCreatePaymentResult.bkashURL;
   });
+
+  return transactionResult;
 };
 
 const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
