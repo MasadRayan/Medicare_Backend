@@ -1,0 +1,25 @@
+model Doctor {
+    id                 String                   @id @default(uuid())
+    name               String
+    email              String                   @unique
+    address            String?
+    specialization     String
+    licenseNumber      String                   @unique
+    qualifications     String
+    experienceYears    Int
+    bio                String?
+    consultationFee    Decimal                  @db.Decimal(10, 2)
+    contactNumber      String?
+    verificationStatus DoctorverificationStatus @default(PENDING)
+    rejectionReason    String?
+    reviewedBy         String?
+    reviewedAt         DateTime?
+    resume             String?
+    additionalFiles    String[]
+    isDeleted          Boolean                  @default(false)
+    deletedAt          DateTime?
+    createdAt          DateTime                 @default(now())
+    updatedAt          DateTime                 @updatedAt
+
+    @@map("doctors")
+}

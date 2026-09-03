@@ -36,3 +36,9 @@ enum PaymentStatus {
   CANCELLED
   REFUNDED
 }
+
+enum DoctorverificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}

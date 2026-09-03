@@ -11,9 +11,9 @@ router.post(
 	AppointmentController.bookAppointment,
 );
 router.post(
-    "/pay-appointment",
-    auth(Role.PATIENT),
-    AppointmentController.payAppointment,
+	"/pay-appointment",
+	auth(Role.PATIENT),
+	AppointmentController.payAppointment,
 );
 router.post(
 	"/cancel-appointment",

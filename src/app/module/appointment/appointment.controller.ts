@@ -5,50 +5,51 @@ import httpStatus from "http-status";
 import { AppointmentService } from "./appointment.service";
 
 const bookAppointment = catchAsync(async (req: Request, res: Response) => {
-  const payload = req.body;
-  const user = req.user;
-  const result = await AppointmentService.bookAppointment(payload, user!);
-  sendResponse(res, {
-    statusCode: httpStatus.CREATED,
-    success: true,
-    message: "Appointment booked successfully",
-    data: result,
-  });
+	const payload = req.body;
+	const user = req.user;
+	const result = await AppointmentService.bookAppointment(payload, user!);
+	sendResponse(res, {
+		statusCode: httpStatus.CREATED,
+		success: true,
+		message: "Appointment booked successfully",
+		data: result,
+	});
 });
 
 const payAppointment = catchAsync(async (req: Request, res: Response) => {
-  const payload = req.body;
-  const user = req.user;
-  const result = await AppointmentService.payAppointment(payload, user!);
-  sendResponse(res, {
-    statusCode: httpStatus.CREATED,
-    success: true,
-    message: "Appointment paid successfully",
-    data: result,
-  });
+	const payload = req.body;
+	const user = req.user;
+	const result = await AppointmentService.payAppointment(payload, user!);
+	sendResponse(res, {
+		statusCode: httpStatus.CREATED,
+		success: true,
+		message: "Appointment paid successfully",
+		data: result,
+	});
 });
 
 const bookAppointmentPaymentCallback = catchAsync(
-  async (req: Request, res: Response) => {
-    const { redirectURL } = await AppointmentService.bookAppointmentPaymentCallback(req.query);
-    res.redirect(redirectURL);
-  },
+	async (req: Request, res: Response) => {
+		const { redirectURL } =
+			await AppointmentService.bookAppointmentPaymentCallback(req.query);
+		res.redirect(redirectURL);
+	},
 );
 
 const cancelAppointment = catchAsync(async (req: Request, res: Response) => {
-  const payload = req.body;
-  const result = await AppointmentService.cancelAppointment(payload);
-  sendResponse(res, {
-    statusCode: httpStatus.CREATED,
-    success: true,
-    message: "Appointment cancelled successfully",
-    data: result,
-  });
+	const payload = req.body;
+	const result = await AppointmentService.cancelAppointment(payload);
+	sendResponse(res, {
+		statusCode: httpStatus.CREATED,
+		success: true,
+		message: "Appointment cancelled successfully",
+		data: result,
+	});
 });
 
 export const AppointmentController = {
-  bookAppointment,
-  payAppointment,
-  bookAppointmentPaymentCallback,
-  cancelAppointment,
+	bookAppointment,
+	payAppointment,
+	bookAppointmentPaymentCallback,
+	cancelAppointment,
 };
