@@ -16,6 +16,7 @@ model User {
   imagePublicId      String       @default("")
   imageURL           String       @default("")
   patient            Patient?
+  doctor             Doctor?
 
   @@map("users")
 }
