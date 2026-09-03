@@ -9,7 +9,7 @@ import { redisClient } from "../../lib/redis";
 import path from "path";
 import ejs from "ejs";
 import { transporter } from "../../lib/nodemailer";
-import { IApplyAsDoctorPayload } from "./doctor.inetrface";
+import { IApplyAsDoctorPayload, IVerifyDoctorEmailPayload } from "./doctor.inetrface";
 
 
 const applyAsDoctor = async (
@@ -148,9 +148,52 @@ const applyAsDoctor = async (
 	return doctorApplication;
 };
 
-const verifyDoctorEmail = async (payload: any) => {
+
+const verifyDoctorEmail = async (payload : IVerifyDoctorEmailPayload) => {
+	const otp = payload.otp;
+	const email = payload.email.trim().toLowerCase();
+
+	const existingUser = await prisma.user.findUnique({
+		where: { email, role: Role.DOCTOR },
+	});
+
+	if (!existingUser) {
+		throw new Error(
+			"Doctor Application Not Found. Please Apply Again.",
+		);
+	}
+
+	if (existingUser.emailVerified) {
+		throw new Error("Email Already Verified");
+	}
+
+	const otpKey = `doctor-application-otp:${email}`;
+
+	const redisOtp = await redisClient.get(otpKey);
+
+	if (!redisOtp) {
+		throw new Error(
+			"OTP Expired. Your Application Window Has Closed, Please Apply Again.",
+		);
+	}
+
+	if (redisOtp !== otp) {
+		throw new Error("OTP Does Not Match");
+	}
+
+	await redisClient.del(otpKey);
+
+	const verifiedUser = await prisma.user.update({
+		where: { id: existingUser.id },
+		data: { emailVerified: true },
+		omit: { password: true },
+		include: { doctor: true },
+	});
+
+	return verifiedUser
 
 }
+
 
 export const DoctorServices = {
 	applyAsDoctor,
