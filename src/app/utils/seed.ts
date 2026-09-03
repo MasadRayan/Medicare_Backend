@@ -143,7 +143,7 @@ export const seedTesterDoctor = async () => {
 				emailVerified: true,
 				doctor: {
 					create: {
-						email, 
+						email,
 						name,
 						experienceYears: 5,
 						licenseNumber: "DOC123456",
@@ -151,8 +151,8 @@ export const seedTesterDoctor = async () => {
 						contactNumber: "1234567890",
 						qualifications: "MBBS, MD",
 						consultationFee: 100,
-					}
-				}
+					},
+				},
 			},
 		});
 

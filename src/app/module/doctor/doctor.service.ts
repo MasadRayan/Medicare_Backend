@@ -3,14 +3,20 @@ import { prisma } from "../../lib/prisma";
 import { cloudinary } from "../../lib/cloudinary";
 import bcrypt from "bcryptjs";
 import config from "../../config";
-import { Role } from "../../../generated/prisma/enums";
+import { DoctorverificationStatus, Role } from "../../../generated/prisma/enums";
 import crypto from "crypto";
 import { redisClient } from "../../lib/redis";
 import path from "path";
 import ejs from "ejs";
 import { transporter } from "../../lib/nodemailer";
-import { IApplyAsDoctorPayload, IVerifyDoctorEmailPayload } from "./doctor.inetrface";
-
+import type {
+	IApplyAsDoctorPayload,
+	IApproveDoctorPayload,
+	IVerifyDoctorEmailPayload,
+} from "./doctor.inetrface";
+import app from "../../../app";
+import { RequestUser } from "../../middleware/checkAuth";
+import { th } from "zod/v4/locales/index.js";
 
 const applyAsDoctor = async (
 	payload: IApplyAsDoctorPayload,
@@ -148,8 +154,7 @@ const applyAsDoctor = async (
 	return doctorApplication;
 };
 
-
-const verifyDoctorEmail = async (payload : IVerifyDoctorEmailPayload) => {
+const verifyDoctorEmail = async (payload: IVerifyDoctorEmailPayload) => {
 	const otp = payload.otp;
 	const email = payload.email.trim().toLowerCase();
 
@@ -158,9 +163,7 @@ const verifyDoctorEmail = async (payload : IVerifyDoctorEmailPayload) => {
 	});
 
 	if (!existingUser) {
-		throw new Error(
-			"Doctor Application Not Found. Please Apply Again.",
-		);
+		throw new Error("Doctor Application Not Found. Please Apply Again.");
 	}
 
 	if (existingUser.emailVerified) {
@@ -190,12 +193,52 @@ const verifyDoctorEmail = async (payload : IVerifyDoctorEmailPayload) => {
 		include: { doctor: true },
 	});
 
-	return verifiedUser
+	return verifiedUser;
+};
 
+const approveDoctor = async(payload : IApproveDoctorPayload, reviewer: RequestUser) => {
+	const { doctorId, verificationStatus, rejectionReason } = payload;
+
+	const existingDoctor = await prisma.doctor.findUnique({
+		where: { id: doctorId },
+		include: { user: true },
+	});
+
+	if (!existingDoctor) {
+		throw new Error("Doctor Not Found");
+	}
+
+	if (existingDoctor.isDeleted) {
+		throw new Error("Doctor is Deleted");
+	}
+
+	if (!existingDoctor.user.emailVerified) {
+		throw new Error("Email Not Verified");
+	}
+
+	if (existingDoctor.verificationStatus !== "PENDING") {
+		throw new Error(`Doctor Application Already ${existingDoctor.verificationStatus.toLowerCase()}`);
+	}
+
+	if (verificationStatus === DoctorverificationStatus.REJECTED && !rejectionReason) {
+		throw new Error("Rejection Reason is Required");
+	}
+
+	const updatedDoctor = await prisma.doctor.update({
+		where: {
+			id: doctorId,
+		},
+		data: {
+			verificationStatus,
+			rejectionReason: verificationStatus === DoctorverificationStatus.REJECTED ? rejectionReason : null,
+			verifiedBy: reviewer.userId,
+			reviewedAt: new Date(),
+		}
+	})
 }
-
 
 export const DoctorServices = {
 	applyAsDoctor,
-	verifyDoctorEmail
+	verifyDoctorEmail,
+	approveDoctor,
 };
