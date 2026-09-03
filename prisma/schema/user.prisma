@@ -1,13 +1,9 @@
 model User {
   id                 String       @id @default(uuid())
   name               String
-  email              String
+  email              String       @unique
   password           String?
-  googleid           String?      @unique
-  authProivider      AuthProvider @default(CREDENTIAL)
   emailVerified      Boolean      @default(false)
-  imageURL           String       @default("")
-  imagePublicId      String       @default("")
   role               Role         @default(PATIENT)
   status             UserStatus   @default(ACTIVE)
   needPasswordChange Boolean      @default(false)
@@ -15,8 +11,11 @@ model User {
   deletedAt          DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
+  authProivider      AuthProvider @default(CREDENTIAL)
+  googleid           String?      @unique
+  imagePublicId      String       @default("")
+  imageURL           String       @default("")
   patient            Patient?
 
-  @@unique([email])
   @@map("users")
 }
