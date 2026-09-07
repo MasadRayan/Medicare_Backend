@@ -17,9 +17,7 @@ import type {
 	IApproveDoctorPayload,
 	IVerifyDoctorEmailPayload,
 } from "./doctor.inetrface";
-import app from "../../../app";
 import type { RequestUser } from "../../middleware/checkAuth";
-import { th } from "zod/v4/locales/index.js";
 
 const applyAsDoctor = async (
 	payload: IApplyAsDoctorPayload,
