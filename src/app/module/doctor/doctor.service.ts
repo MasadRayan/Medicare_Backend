@@ -3,7 +3,10 @@ import { prisma } from "../../lib/prisma";
 import { cloudinary } from "../../lib/cloudinary";
 import bcrypt from "bcryptjs";
 import config from "../../config";
-import { DoctorverificationStatus, Role } from "../../../generated/prisma/enums";
+import {
+	DoctorverificationStatus,
+	Role,
+} from "../../../generated/prisma/enums";
 import crypto from "crypto";
 import { redisClient } from "../../lib/redis";
 import path from "path";
@@ -15,7 +18,7 @@ import type {
 	IVerifyDoctorEmailPayload,
 } from "./doctor.inetrface";
 import app from "../../../app";
-import { RequestUser } from "../../middleware/checkAuth";
+import type { RequestUser } from "../../middleware/checkAuth";
 import { th } from "zod/v4/locales/index.js";
 
 const applyAsDoctor = async (
@@ -196,7 +199,10 @@ const verifyDoctorEmail = async (payload: IVerifyDoctorEmailPayload) => {
 	return verifiedUser;
 };
 
-const approveDoctor = async(payload : IApproveDoctorPayload, reviewer: RequestUser) => {
+const approveDoctor = async (
+	payload: IApproveDoctorPayload,
+	reviewer: RequestUser,
+) => {
 	const { doctorId, verificationStatus, rejectionReason } = payload;
 
 	const existingDoctor = await prisma.doctor.findUnique({
@@ -217,10 +223,15 @@ const approveDoctor = async(payload : IApproveDoctorPayload, reviewer: RequestUs
 	}
 
 	if (existingDoctor.verificationStatus !== "PENDING") {
-		throw new Error(`Doctor Application Already ${existingDoctor.verificationStatus.toLowerCase()}`);
+		throw new Error(
+			`Doctor Application Already ${existingDoctor.verificationStatus.toLowerCase()}`,
+		);
 	}
 
-	if (verificationStatus === DoctorverificationStatus.REJECTED && !rejectionReason) {
+	if (
+		verificationStatus === DoctorverificationStatus.REJECTED &&
+		!rejectionReason
+	) {
 		throw new Error("Rejection Reason is Required");
 	}
 
@@ -230,12 +241,43 @@ const approveDoctor = async(payload : IApproveDoctorPayload, reviewer: RequestUs
 		},
 		data: {
 			verificationStatus,
-			rejectionReason: verificationStatus === DoctorverificationStatus.REJECTED ? rejectionReason : null,
+			rejectionReason:
+				verificationStatus === DoctorverificationStatus.REJECTED
+					? rejectionReason
+					: null,
 			verifiedBy: reviewer.userId,
 			reviewedAt: new Date(),
-		}
-	})
-}
+		},
+	});
+	const isApproved = verificationStatus === DoctorverificationStatus.APPROVED;
+
+	const tempatePath = path.join(
+		process.cwd(),
+		`src/app/templates/${
+			isApproved
+				? "doctor-application-approved.ejs"
+				: "doctor-application-rejected.ejs"
+		}`,
+	);
+
+	const templateData = {
+		name: updatedDoctor.name,
+		reason: updatedDoctor.rejectionReason,
+	};
+
+	const html = await ejs.renderFile(tempatePath, templateData);
+
+	await transporter.sendMail({
+		from: config.email_sender,
+		to: updatedDoctor.email,
+		subject: isApproved
+			? "Your Doctor Application Has Been Approved"
+			: "Your Doctor Application Has Been Rejected",
+		html,
+	});
+
+	return updatedDoctor;
+};
 
 export const DoctorServices = {
 	applyAsDoctor,

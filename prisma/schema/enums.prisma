@@ -42,4 +42,5 @@ enum DoctorverificationStatus {
   PENDING
   VERIFIED
   REJECTED
+  APPROVED
 }
