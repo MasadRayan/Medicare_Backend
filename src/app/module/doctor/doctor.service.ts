@@ -20,6 +20,8 @@ import type {
 import type { RequestUser } from "../../middleware/checkAuth";
 import type { DoctorWhereInput } from "../../../generated/prisma/models";
 import type { IQuery } from "../../interfaces";
+import httpStatus from "http-status";
+import { AppError } from "../../utils/AppError";
 
 const applyAsDoctor = async (
 	payload: IApplyAsDoctorPayload,
@@ -33,7 +35,10 @@ const applyAsDoctor = async (
 	});
 
 	if (isUserExists) {
-		throw new Error("User Already Exists With This Email");
+		throw new AppError(
+			httpStatus.CONFLICT,
+			"User Already Exists With This Email",
+		);
 	}
 
 	const resumeUploadResult = await new Promise<UploadApiResponse>(
@@ -50,7 +55,12 @@ const applyAsDoctor = async (
 						}
 
 						if (!result) {
-							return reject(new Error("No result returned from Cloudinary"));
+							return reject(
+								new AppError(
+									httpStatus.INTERNAL_SERVER_ERROR,
+									"No result returned from Cloudinary",
+								),
+							);
 						}
 
 						resolve(result);
@@ -77,7 +87,12 @@ const applyAsDoctor = async (
 							}
 
 							if (!result) {
-								return reject(new Error("No result returned from Cloudinary"));
+								return reject(
+									new AppError(
+										httpStatus.INTERNAL_SERVER_ERROR,
+										"No result returned from Cloudinary",
+									),
+								);
 							}
 
 							resolve(result);
@@ -166,11 +181,14 @@ const verifyDoctorEmail = async (payload: IVerifyDoctorEmailPayload) => {
 	});
 
 	if (!existingUser) {
-		throw new Error("Doctor Application Not Found. Please Apply Again.");
+		throw new AppError(
+			httpStatus.NOT_FOUND,
+			"Doctor Application Not Found. Please Apply Again.",
+		);
 	}
 
 	if (existingUser.emailVerified) {
-		throw new Error("Email Already Verified");
+		throw new AppError(httpStatus.BAD_REQUEST, "Email Already Verified");
 	}
 
 	const otpKey = `doctor-application-otp:${email}`;
@@ -178,13 +196,14 @@ const verifyDoctorEmail = async (payload: IVerifyDoctorEmailPayload) => {
 	const redisOtp = await redisClient.get(otpKey);
 
 	if (!redisOtp) {
-		throw new Error(
+		throw new AppError(
+			httpStatus.BAD_REQUEST,
 			"OTP Expired. Your Application Window Has Closed, Please Apply Again.",
 		);
 	}
 
 	if (redisOtp !== otp) {
-		throw new Error("OTP Does Not Match");
+		throw new AppError(httpStatus.BAD_REQUEST, "OTP Does Not Match");
 	}
 
 	await redisClient.del(otpKey);
@@ -211,19 +230,20 @@ const approveDoctor = async (
 	});
 
 	if (!existingDoctor) {
-		throw new Error("Doctor Not Found");
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor Not Found");
 	}
 
 	if (existingDoctor.isDeleted) {
-		throw new Error("Doctor is Deleted");
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor is Deleted");
 	}
 
 	if (!existingDoctor.user.emailVerified) {
-		throw new Error("Email Not Verified");
+		throw new AppError(httpStatus.BAD_REQUEST, "Email Not Verified");
 	}
 
 	if (existingDoctor.verificationStatus !== "PENDING") {
-		throw new Error(
+		throw new AppError(
+			httpStatus.BAD_REQUEST,
 			`Doctor Application Already ${existingDoctor.verificationStatus.toLowerCase()}`,
 		);
 	}
@@ -232,7 +252,10 @@ const approveDoctor = async (
 		verificationStatus === DoctorverificationStatus.REJECTED &&
 		!rejectionReason
 	) {
-		throw new Error("Rejection Reason is Required");
+		throw new AppError(
+			httpStatus.BAD_REQUEST,
+			"Rejection Reason is Required",
+		);
 	}
 
 	const updatedDoctor = await prisma.doctor.update({
