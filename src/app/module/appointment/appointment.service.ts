@@ -9,7 +9,7 @@ import { getBkashIdToken } from "../../lib/bkash";
 import { prisma } from "../../lib/prisma";
 import type { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
-import type { IBookAppointmentPayload } from "./appointment.interface";
+import type { IBookAppointmentPayload, ICancelAppointmentPayload, IPayAppointmentPayload } from "./appointment.interface";
 import { addMinutes, isAfter, isBefore, isSameDay, subHours } from "date-fns";
 import { transporter } from "../../lib/nodemailer";
 import PDFDocument from "pdfkit";
@@ -177,7 +177,7 @@ const bookAppointment = async (
   return transactionResult;
 };
 
-const payAppointment = async (payload: any, user: RequestUser) => {
+const payAppointment = async (payload: IPayAppointmentPayload, user: RequestUser) => {
   const { appointmentId } = payload;
 
   const existingAppointment = await prisma.appointment.findUnique({
@@ -469,7 +469,7 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
   return transactionResult;
 };
 
-const cancelAppointment = async (payload: any, user: RequestUser) => {
+const cancelAppointment = async (payload: ICancelAppointmentPayload, user: RequestUser) => {
   const transactionResult = await prisma.$transaction(async (tx) => {
     const { appointmentId } = payload;
 
