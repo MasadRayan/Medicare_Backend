@@ -48,9 +48,29 @@ const cancelAppointment = catchAsync(async (req: Request, res: Response) => {
 	});
 });
 
+const updateAppointmentStatus = catchAsync(
+	async (req: Request, res: Response) => {
+		const appointmentId = req.params.appointmentId as string;
+		const payload = req.body;
+		const user = req.user!;
+
+		const result = await AppointmentService.updateAppointment(
+			appointmentId,
+			payload,
+			user,
+		);
+		sendResponse(res, {
+			statusCode: httpStatus.OK,
+			success: true,
+			message: "Appointment Status Updated Successfully",
+			data: result,
+		});
+	},
+);
 export const AppointmentController = {
 	bookAppointment,
 	payAppointment,
 	bookAppointmentPaymentCallback,
 	cancelAppointment,
+	updateAppointmentStatus
 };

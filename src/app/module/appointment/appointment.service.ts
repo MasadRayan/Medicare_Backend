@@ -9,10 +9,11 @@ import { getBkashIdToken } from "../../lib/bkash";
 import { prisma } from "../../lib/prisma";
 import type { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
-import type { IBookAppointmentPayload, ICancelAppointmentPayload, IPayAppointmentPayload } from "./appointment.interface";
+import type { IBookAppointmentPayload, ICancelAppointmentPayload, IPayAppointmentPayload, IUpdateAppointmentStatusPayload } from "./appointment.interface";
 import { addMinutes, isAfter, isBefore, isSameDay, subHours } from "date-fns";
 import { transporter } from "../../lib/nodemailer";
 import PDFDocument from "pdfkit";
+import { th } from "zod/v4/locales/index.js";
 
 const bookAppointment = async (
   payload: IBookAppointmentPayload,
@@ -594,9 +595,87 @@ const cancelAppointment = async (payload: ICancelAppointmentPayload, user: Reque
   return transactionResult;
 };
 
+const updateAppointment = async ( appointmentId: string, payload: IUpdateAppointmentStatusPayload, user: RequestUser) => {
+	const doctor = await prisma.doctor.findUnique({
+		where: {
+			userId: user.userId,
+		}
+	})
+
+	if (!doctor) {
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
+	}
+
+	const appointment = await prisma.appointment.findUnique({
+		where: {
+			id: appointmentId,
+		}
+	})
+
+	if (!appointment) {
+		throw new AppError(httpStatus.NOT_FOUND, "Appointment not found");
+	}
+
+	if (appointment.doctorId !== doctor.id) {
+		throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to update this appointment");
+	}
+
+	if (appointment.status === AppointmentStatus.COMPLETED) {
+		throw new AppError(httpStatus.BAD_REQUEST, "Cannot update a completed appointment");
+	}
+
+	if (appointment.status === AppointmentStatus.CANCELLED) {
+		throw new AppError(httpStatus.BAD_REQUEST, "Cannot update a cancelled appointment");
+	}
+
+	if (appointment.status === AppointmentStatus.PENDING) {
+		throw new AppError(httpStatus.BAD_REQUEST, "Cannot update a pending appointment");
+	}
+
+	if (appointment.status === AppointmentStatus.CONFIRMED) {
+		if (payload.status !== "ONGOING") {
+			throw new AppError(httpStatus.BAD_REQUEST, "You can only update a confirmed appointment to ongoing");
+		}
+
+		await prisma.appointment.update({
+			where: {
+				id: appointment.id,
+			},
+			data: {
+				status: AppointmentStatus.ONGOING,
+			}
+		})
+	}
+
+	if (appointment.status === AppointmentStatus.ONGOING) {
+		if (payload.status !== "COMPLETED") {
+			throw new AppError(httpStatus.BAD_REQUEST, "You can only update an ongoing appointment to completed");
+		}
+
+		await prisma.appointment.update({
+			where: {
+				id: appointment.id,
+			},
+			data: {
+				status: AppointmentStatus.COMPLETED,
+			}
+		})
+	}
+
+	const updatedAppointment = await prisma.appointment.findUnique({
+		where: {
+			id: appointment.id,
+		}
+	})
+
+	return updatedAppointment;
+
+}
+
 export const AppointmentService = {
   bookAppointment,
   payAppointment,
   bookAppointmentPaymentCallback,
   cancelAppointment,
+  updateAppointment
 };
