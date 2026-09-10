@@ -12,6 +12,7 @@ import { AppError } from "../../utils/AppError";
 import { IBookAppointmentPayload } from "./appointment.interface";
 import { addMinutes, isAfter, isSameDay } from "date-fns";
 import { transporter } from "../../lib/nodemailer";
+import PDFDocument from "pdfkit";
 
 const bookAppointment = async (payload: IBookAppointmentPayload, user: RequestUser) => {
 	const transactionResult = await prisma.$transaction(async (tx) => {
@@ -311,12 +312,9 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 					id: bkashExecutePaymentResult.merchantInvoiceNumber,
 				},
 				include: {
-					schedule: {
-						include:{
-							doctor: true,
-						}
-					},
+					schedule: true,
 					patient: true,
+					doctor: true,
 				}
 			});
 
@@ -357,14 +355,60 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 				},
 			});
 
-			
+			const pdfDocument = new PDFDocument({ margin : 50});
+
+			const pdfChunks : Buffer[] = []
+
+			pdfDocument.on("data", (chunk : Buffer) => {
+				pdfChunks.push(chunk)
+			})
+
+			const pdfReadyPromise = new Promise<Buffer>((resolve)=>{
+				pdfDocument.on("end", () => {
+					resolve(Buffer.concat(pdfChunks))
+				})
+			})
+
+			pdfDocument.fontSize(20).text("Medi Care System", {align : "center"});
+			pdfDocument.fontSize(14).text("Appointment Invoice", { align: "center" });
+			pdfDocument.moveDown(2)
+
+			pdfDocument.fontSize(12).text(`Patient Name: ${appointment.patient?.name}`);
+			pdfDocument.text(`Patient Email: ${appointment.patient?.email}`);
+			pdfDocument.moveDown();
+
+			pdfDocument.text(`Doctor Name: ${appointment.doctor?.name}`);
+			pdfDocument.text(`Specialization: ${appointment.doctor?.specialization}`);
+			pdfDocument.moveDown();
+
+			pdfDocument.text(
+				`Appointment Date: ${appointment.schedule.startDateTime.toDateString()}`,
+			);
+			pdfDocument.text(`Your Joining Time: ${joiningTime.toString()}`);
+			pdfDocument.text(`Your Serial Number: ${serialNumber}`);
+			pdfDocument.text(`Meeting Link: ${appointment.schedule.meetingLink}`);
+			pdfDocument.moveDown();
+
+			pdfDocument.text(`Amount Paid: ${bkashExecutePaymentResult.amount} BDT`);
+			pdfDocument.text(`Payment Method: bKash`);
+			pdfDocument.text(`Transaction Id: ${bkashExecutePaymentResult.trxID}`);
+			pdfDocument.text(`Paid At: ${bkashExecutePaymentResult.paymentExecuteTime}`);
+
+			pdfDocument.end()
+
+			const pdfBuffer = await pdfReadyPromise;
 
 			await transporter.sendMail({
 				from: config.email_sender,
 				to: appointment.patient.email,
-				subject: "Your Appointment Invoice - PH Healthcare System",
+				subject: "Your Appointment Invoice - Medi Care System",
 				text: "Thank you for booking an appointment. Please find your invoice attached.",
-				
+				attachments : [
+					{
+						filename: "invoice.pdf",
+						content : pdfBuffer
+					}
+				]
 			})
 
 			await tx.payment.update({
