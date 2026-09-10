@@ -355,10 +355,63 @@ const updateSchedule = async (
   return updatedSchedule;
 };
 
+const publishSchedule = async(scheduleId: string, user: RequestUser) => {
+  const doctor = await prisma.doctor.findUnique({
+    where: {
+      userId: user.userId,
+    },
+  });
+
+  if (!doctor) {
+    throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
+  }
+
+  const schedule = await prisma.schedule.findUnique({
+    where: {
+      id: scheduleId,
+    },
+  });
+
+  if (!schedule || schedule.isDeleted) {
+    throw new AppError(httpStatus.NOT_FOUND, "Schedule not found");
+  }
+
+  if (schedule.doctorId !== doctor.id) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You are not authorized to publish this schedule",
+    );
+  }
+
+  if (schedule.status === ScheduleStatus.PUBLISHED) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "Schedule is already published",
+    );
+  }
+
+  const updatedSchedule = await prisma.schedule.update({
+    where: {
+      id: scheduleId,
+    },
+    data: {
+      status: ScheduleStatus.PUBLISHED,
+    },
+  });
+
+  return updatedSchedule;
+};
+
+const deleteSchedule = async() => {
+
+}
+
 export const ScheduleServices = {
   createSchedule,
   getMySchedule,
   getAllSchedules,
   getScheduleById,
   updateSchedule,
+  publishSchedule,
+  deleteSchedule
 };
