@@ -32,7 +32,7 @@
 				"noUnusedVariables": "off"
 			},
 			"style": {
-				"noNonNullAssertion": "info",
+				"noNonNullAssertion": "off",
 				"useNodejsImportProtocol": "info"
 			}
 		},

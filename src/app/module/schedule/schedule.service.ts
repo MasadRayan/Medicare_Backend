@@ -1,4 +1,4 @@
-import { addDays, differenceInMinutes, startOfDay } from "date-fns";
+import { addDays, differenceInMinutes, isAfter, isSameDay, startOfDay } from "date-fns";
 import { prisma } from "../../lib/prisma";
 import type { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
@@ -23,6 +23,14 @@ const createSchedule = async (
 
   if (!doctor) {
     throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
+  }
+
+  if (!isSameDay(payload.startDateTime, payload.endDateTime)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Start and end times must be on the same day");
+  }
+
+  if (isAfter(payload.startDateTime, payload.endDateTime)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Start time must be before end time");
   }
 
   const startOfTheDay = startOfDay(payload.startDateTime);
@@ -299,6 +307,14 @@ const updateSchedule = async (
   payload.startDateTime = payload.startDateTime || schedule.startDateTime;
   payload.endDateTime = payload.endDateTime || schedule.endDateTime;
 
+  if (!isSameDay(payload.startDateTime, payload.endDateTime)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Start and end times must be on the same day");
+  }
+
+  if (isAfter(payload.startDateTime, payload.endDateTime)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Start time must be before end time");
+  }
+
   const startOfTheDay = startOfDay(payload.startDateTime);
   const endOfTheDay = addDays(startOfTheDay, 1);
 
@@ -533,5 +549,6 @@ export const ScheduleServices = {
   getScheduleById,
   updateSchedule,
   publishSchedule,
-  deleteSchedule
+  deleteSchedule,
+  getTodaysSchedules
 };
