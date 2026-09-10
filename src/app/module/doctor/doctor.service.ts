@@ -344,7 +344,6 @@ const getAllDoctors = async (query: IQuery) => {
 		skip: skip,
 
 		orderBy: {
-			// sortBy : sortOrder
 			[sortBy]: sortOrder,
 		},
 
