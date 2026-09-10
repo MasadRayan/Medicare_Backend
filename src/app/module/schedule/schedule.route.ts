@@ -3,7 +3,7 @@ import { auth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { ScheduleController } from "./schedule.controller";
 import { Router } from "express";
-import { CreateScheduleValidationZodSchema } from "./schedule.validation";
+import { CreateScheduleValidationZodSchema, UpdateScheduleValidationZodSchema } from "./schedule.validation";
 
 const router = Router();
 
