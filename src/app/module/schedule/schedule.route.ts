@@ -3,7 +3,10 @@ import { auth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { ScheduleController } from "./schedule.controller";
 import { Router } from "express";
-import { CreateScheduleValidationZodSchema, UpdateScheduleValidationZodSchema } from "./schedule.validation";
+import {
+	CreateScheduleValidationZodSchema,
+	UpdateScheduleValidationZodSchema,
+} from "./schedule.validation";
 
 const router = Router();
 
@@ -15,41 +18,41 @@ router.post(
 );
 
 router.get(
-    "/my-schedules",
-    auth(Role.DOCTOR),
-    ScheduleController.getMySchedules,
+	"/my-schedules",
+	auth(Role.DOCTOR),
+	ScheduleController.getMySchedules,
 );
 
 router.get(
-    "/all-schedules",
-    auth(Role.ADMIN, Role.SUPER_ADMIN),
-    ScheduleController.getAllSchedules,
+	"/all-schedules",
+	auth(Role.ADMIN, Role.SUPER_ADMIN),
+	ScheduleController.getAllSchedules,
 );
 
 router.get("/todays-schedule", ScheduleController.getTodaysSchedules);
 
 router.patch(
-    "/update-schedule/:scheduleId",
-    auth(Role.DOCTOR),
-    validateRequest(UpdateScheduleValidationZodSchema),
-    ScheduleController.updateSchedule,
+	"/update-schedule/:scheduleId",
+	auth(Role.DOCTOR),
+	validateRequest(UpdateScheduleValidationZodSchema),
+	ScheduleController.updateSchedule,
 );
 
 router.patch(
-    "/publish-schedule/:scheduleId",
-    auth(Role.DOCTOR),
-    ScheduleController.publishSchedule,
+	"/publish-schedule/:scheduleId",
+	auth(Role.DOCTOR),
+	ScheduleController.publishSchedule,
 );
 
 router.get(
-    "/:scheduleId",
-    auth(Role.DOCTOR, Role.ADMIN, Role.SUPER_ADMIN),
-    ScheduleController.getScheduleById,
+	"/:scheduleId",
+	auth(Role.DOCTOR, Role.ADMIN, Role.SUPER_ADMIN),
+	ScheduleController.getScheduleById,
 );
 
 router.delete(
-    "/:scheduleId",
-    auth(Role.DOCTOR),
-    ScheduleController.deleteSchedule,
+	"/:scheduleId",
+	auth(Role.DOCTOR),
+	ScheduleController.deleteSchedule,
 );
 export const ScheduleRoutes = router;

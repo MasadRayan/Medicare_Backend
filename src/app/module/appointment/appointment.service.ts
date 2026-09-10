@@ -1,7 +1,7 @@
 import {
 	AppointmentStatus,
 	PaymentStatus,
-    ScheduleStatus,
+	ScheduleStatus,
 } from "../../../generated/prisma/enums";
 import httpStatus from "http-status";
 import config from "../../config";
@@ -9,12 +9,15 @@ import { getBkashIdToken } from "../../lib/bkash";
 import { prisma } from "../../lib/prisma";
 import type { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
-import { IBookAppointmentPayload } from "./appointment.interface";
+import type { IBookAppointmentPayload } from "./appointment.interface";
 import { addMinutes, isAfter, isSameDay } from "date-fns";
 import { transporter } from "../../lib/nodemailer";
 import PDFDocument from "pdfkit";
 
-const bookAppointment = async (payload: IBookAppointmentPayload, user: RequestUser) => {
+const bookAppointment = async (
+	payload: IBookAppointmentPayload,
+	user: RequestUser,
+) => {
 	const transactionResult = await prisma.$transaction(async (tx) => {
 		//business logic for booking appointment will be here
 
@@ -22,7 +25,7 @@ const bookAppointment = async (payload: IBookAppointmentPayload, user: RequestUs
 			where: {
 				userId: user.userId,
 			},
-		})
+		});
 
 		if (!patient) {
 			throw new AppError(httpStatus.NOT_FOUND, "Patient not found");
@@ -34,7 +37,7 @@ const bookAppointment = async (payload: IBookAppointmentPayload, user: RequestUs
 			},
 			include: {
 				doctor: true,
-			}
+			},
 		});
 
 		if (!schedule || schedule.isDeleted) {
@@ -63,7 +66,6 @@ const bookAppointment = async (payload: IBookAppointmentPayload, user: RequestUs
 			where: {
 				patientId: patient.id,
 				scheduleId: schedule.id,
-				
 			},
 		});
 
@@ -188,7 +190,7 @@ const payAppointment = async (payload: any, user: RequestUser) => {
 					doctor: true,
 				},
 			},
-		}
+		},
 	});
 
 	if (!existingAppointment) {
@@ -306,7 +308,6 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 		console.log(bkashExecutePaymentResult);
 
 		if (paymentStatus === "success") {
-
 			const appointment = await tx.appointment.findUnique({
 				where: {
 					id: bkashExecutePaymentResult.merchantInvoiceNumber,
@@ -315,7 +316,7 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 					schedule: true,
 					patient: true,
 					doctor: true,
-				}
+				},
 			});
 
 			if (!appointment) {
@@ -327,13 +328,15 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 
 			const newAvailableSlots = appointment.schedule.availableSlots - 1;
 
-			const alreadyBookedAppointment = appointment.schedule.totalSlots - appointment.schedule.availableSlots
+			const alreadyBookedAppointment =
+				appointment.schedule.totalSlots - appointment.schedule.availableSlots;
 
 			const serialNumber = alreadyBookedAppointment + 1;
 
-			const joiningTime = addMinutes(appointment.schedule.startDateTime, 
-				(serialNumber - 1) *20
-			)
+			const joiningTime = addMinutes(
+				appointment.schedule.startDateTime,
+				(serialNumber - 1) * 20,
+			);
 
 			await tx.appointment.update({
 				where: {
@@ -355,25 +358,27 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 				},
 			});
 
-			const pdfDocument = new PDFDocument({ margin : 50});
+			const pdfDocument = new PDFDocument({ margin: 50 });
 
-			const pdfChunks : Buffer[] = []
+			const pdfChunks: Buffer[] = [];
 
-			pdfDocument.on("data", (chunk : Buffer) => {
-				pdfChunks.push(chunk)
-			})
+			pdfDocument.on("data", (chunk: Buffer) => {
+				pdfChunks.push(chunk);
+			});
 
-			const pdfReadyPromise = new Promise<Buffer>((resolve)=>{
+			const pdfReadyPromise = new Promise<Buffer>((resolve) => {
 				pdfDocument.on("end", () => {
-					resolve(Buffer.concat(pdfChunks))
-				})
-			})
+					resolve(Buffer.concat(pdfChunks));
+				});
+			});
 
-			pdfDocument.fontSize(20).text("Medi Care System", {align : "center"});
+			pdfDocument.fontSize(20).text("Medi Care System", { align: "center" });
 			pdfDocument.fontSize(14).text("Appointment Invoice", { align: "center" });
-			pdfDocument.moveDown(2)
+			pdfDocument.moveDown(2);
 
-			pdfDocument.fontSize(12).text(`Patient Name: ${appointment.patient?.name}`);
+			pdfDocument
+				.fontSize(12)
+				.text(`Patient Name: ${appointment.patient?.name}`);
 			pdfDocument.text(`Patient Email: ${appointment.patient?.email}`);
 			pdfDocument.moveDown();
 
@@ -392,9 +397,11 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 			pdfDocument.text(`Amount Paid: ${bkashExecutePaymentResult.amount} BDT`);
 			pdfDocument.text(`Payment Method: bKash`);
 			pdfDocument.text(`Transaction Id: ${bkashExecutePaymentResult.trxID}`);
-			pdfDocument.text(`Paid At: ${bkashExecutePaymentResult.paymentExecuteTime}`);
+			pdfDocument.text(
+				`Paid At: ${bkashExecutePaymentResult.paymentExecuteTime}`,
+			);
 
-			pdfDocument.end()
+			pdfDocument.end();
 
 			const pdfBuffer = await pdfReadyPromise;
 
@@ -403,13 +410,13 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 				to: appointment.patient.email,
 				subject: "Your Appointment Invoice - Medi Care System",
 				text: "Thank you for booking an appointment. Please find your invoice attached.",
-				attachments : [
+				attachments: [
 					{
 						filename: "invoice.pdf",
-						content : pdfBuffer
-					}
-				]
-			})
+						content: pdfBuffer,
+					},
+				],
+			});
 
 			await tx.payment.update({
 				where: {
