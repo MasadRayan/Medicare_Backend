@@ -28,7 +28,8 @@
 				"noCommaOperator": "info"
 			},
 			"correctness": {
-				"noUnusedFunctionParameters": "off"
+				"noUnusedFunctionParameters": "off",
+				"noUnusedVariables": "off"
 			},
 			"style": {
 				"noNonNullAssertion": "info",
