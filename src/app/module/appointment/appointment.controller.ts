@@ -67,10 +67,79 @@ const updateAppointmentStatus = catchAsync(
 		});
 	},
 );
+
+const getMyAppointments = catchAsync(async (req: Request, res: Response) => {
+	const user = req.user!;
+
+	const { data, meta } = await AppointmentService.getMyAppointments(
+		req.query,
+		user,
+	);
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Appointments Retrieved Successfully",
+		data,
+		meta,
+	});
+});
+
+const getDoctorAppointments = catchAsync(
+	async (req: Request, res: Response) => {
+		const user = req.user!;
+
+		const { data, meta } = await AppointmentService.getDoctorAppointments(
+			req.query,
+			user,
+		);
+		sendResponse(res, {
+			statusCode: httpStatus.OK,
+			success: true,
+			message: "Appointments Retrieved Successfully",
+			data,
+			meta,
+		});
+	},
+);
+
+const getAllAppointments = catchAsync(async (req: Request, res: Response) => {
+	const { data, meta } = await AppointmentService.getAllAppointments(
+		req.query,
+	);
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Appointments Retrieved Successfully",
+		data,
+		meta,
+	});
+});
+
+const getSingleAppointment = catchAsync(async (req: Request, res: Response) => {
+	const appointmentId = req.params.appointmentId as string;
+	const user = req.user!;
+
+	const result = await AppointmentService.getSingleAppointment(
+		appointmentId,
+		user,
+	);
+	sendResponse(res, {
+		statusCode: httpStatus.OK,
+		success: true,
+		message: "Appointment Retrieved Successfully",
+		data: result,
+	});
+});
+
+
 export const AppointmentController = {
 	bookAppointment,
 	payAppointment,
 	bookAppointmentPaymentCallback,
 	cancelAppointment,
+	getMyAppointments,
+	getDoctorAppointments,
+	getAllAppointments,
+	getSingleAppointment,
 	updateAppointmentStatus
 };

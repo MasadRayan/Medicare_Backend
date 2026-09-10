@@ -892,7 +892,38 @@ const getAllAppointments = async (query: IQuery) => {
 	};
 };
 
-const getSingleAppointment = async () => {};
+const getSingleAppointment = async (appointmentId: string, user: RequestUser) => {
+
+	const apointment = await prisma.appointment.findUnique({	
+		where: {
+			id: appointmentId
+		},
+		include: {
+			patient: { select: { id: true, name: true, email: true, userId: true } },
+			doctor: { select: { id: true, name: true, specialization: true, userId: true } },
+			schedule: true,
+			payment: true,
+		},
+	});
+
+	if(!apointment){
+		throw new AppError(httpStatus.NOT_FOUND, "Appointment Not Found");
+	}
+
+	if (user.role === "PATIENT") {
+		if (apointment.patient.userId !== user.userId) {
+			throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to view this appointment");
+		}
+	}
+	if (user.role === "DOCTOR") {
+		if (apointment.doctor.userId !== user.userId) {
+			throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to view this appointment");
+		}
+	}
+
+	return apointment;
+
+};
 
 export const AppointmentService = {
   bookAppointment,
