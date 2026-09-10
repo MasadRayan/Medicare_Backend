@@ -252,10 +252,7 @@ const approveDoctor = async (
 		verificationStatus === DoctorverificationStatus.REJECTED &&
 		!rejectionReason
 	) {
-		throw new AppError(
-			httpStatus.BAD_REQUEST,
-			"Rejection Reason is Required",
-		);
+		throw new AppError(httpStatus.BAD_REQUEST, "Rejection Reason is Required");
 	}
 
 	const updatedDoctor = await prisma.doctor.update({

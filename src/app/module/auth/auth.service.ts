@@ -129,10 +129,7 @@ const verifyPatientEmail = async (payload: IverifyEmailPayload) => {
 	const otpKey = `User-Registration-otp:${email}`;
 	const redisOTP = await redisClient.get(otpKey);
 	if (!redisOTP) {
-		throw new AppError(
-			httpStatus.BAD_REQUEST,
-			"OTP is invalid or has expired",
-		);
+		throw new AppError(httpStatus.BAD_REQUEST, "OTP is invalid or has expired");
 	}
 	if (redisOTP !== otp) {
 		throw new AppError(httpStatus.BAD_REQUEST, "OTP is incorrect");
@@ -416,10 +413,7 @@ const googleLogin = async (payload: IGooglePayload) => {
 
 		if (isPatientExistsWithCredential) {
 			if (!isPatientExistsWithCredential.emailVerified) {
-				throw new AppError(
-					httpStatus.FORBIDDEN,
-					"User email is not verified",
-				);
+				throw new AppError(httpStatus.FORBIDDEN, "User email is not verified");
 			}
 
 			if (isPatientExistsWithCredential.status === "BLOCKED") {
@@ -545,10 +539,7 @@ const forgetPasseord = async (payload: IForgetPasswordPayload) => {
 	}
 
 	if (!isUserExists.emailVerified) {
-		throw new AppError(
-			httpStatus.FORBIDDEN,
-			"User email is not verified",
-		);
+		throw new AppError(httpStatus.FORBIDDEN, "User email is not verified");
 	}
 
 	const otp = crypto.randomInt(100000, 1000000).toString();
@@ -612,10 +603,7 @@ const resetPassword = async (payload: IResetPasswordPayload) => {
 	}
 
 	if (!isUserExists.emailVerified) {
-		throw new AppError(
-			httpStatus.FORBIDDEN,
-			"User email is not verified",
-		);
+		throw new AppError(httpStatus.FORBIDDEN, "User email is not verified");
 	}
 
 	const key = `forget-password-otp:${isUserExists.email}`;
@@ -623,10 +611,7 @@ const resetPassword = async (payload: IResetPasswordPayload) => {
 	const redisOTP = await redisClient.get(key);
 
 	if (!redisOTP) {
-		throw new AppError(
-			httpStatus.BAD_REQUEST,
-			"OTP is invalid or has expired",
-		);
+		throw new AppError(httpStatus.BAD_REQUEST, "OTP is invalid or has expired");
 	}
 
 	if (redisOTP !== otp) {

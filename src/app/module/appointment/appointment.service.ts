@@ -94,10 +94,7 @@ const payAppointment = async (payload: any, user: RequestUser) => {
 	}
 
 	if (existingAppointment.status !== "PENDING") {
-		throw new AppError(
-			httpStatus.BAD_REQUEST,
-			"Appointment is not pending",
-		);
+		throw new AppError(httpStatus.BAD_REQUEST, "Appointment is not pending");
 	}
 
 	const bkashIdToken = await getBkashIdToken();

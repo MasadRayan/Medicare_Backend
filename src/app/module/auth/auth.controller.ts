@@ -13,10 +13,7 @@ const registerPatient = catchAsync(async (req: Request, res: Response) => {
 	);
 
 	if (!payload.success) {
-		throw new AppError(
-			httpStatus.BAD_REQUEST,
-			payload.error.issues[0].message,
-		);
+		throw new AppError(httpStatus.BAD_REQUEST, payload.error.issues[0].message);
 	}
 
 	await AuthService.registerPatient(payload.data);
@@ -128,10 +125,7 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
 
 const refreshToken = catchAsync(async (req: Request, res: Response) => {
 	if (!req.cookies.refreshToken) {
-		throw new AppError(
-			httpStatus.UNAUTHORIZED,
-			"Refresh token is missing",
-		);
+		throw new AppError(httpStatus.UNAUTHORIZED, "Refresh token is missing");
 	}
 	const result = await AuthService.refreshToken(req.cookies.refreshToken);
 	const { accessToken, refreshToken: newRefreshToken } = result;
