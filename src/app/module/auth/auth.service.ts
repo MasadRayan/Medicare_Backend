@@ -25,6 +25,8 @@ import { redisClient } from "../../lib/redis";
 import { transporter } from "../../lib/nodemailer";
 import ejs from "ejs";
 import path from "path";
+import httpStatus from "http-status";
+import { AppError } from "../../utils/AppError";
 
 const registerPatient = async (payload: IRegisterPatientPayload) => {
 	const { name, password, patient: patientData } = payload;
@@ -214,19 +216,23 @@ const loginUser = async (payload: ILoginUserPayload) => {
 	});
 
 	if (!user) {
-		throw new Error("User not found");
+		// throw new Error("User not found");
+		throw new AppError(httpStatus.NOT_FOUND, "User not found");
 	}
 
 	if (user.status === UserStatus.BLOCKED) {
-		throw new Error("User is blocked");
+		throw new AppError(httpStatus.FORBIDDEN, "User is blocked");
 	}
 
 	if (user.isDeleted || user.status === UserStatus.DELETED) {
-		throw new Error("User is deleted");
+		throw new AppError(httpStatus.NOT_FOUND, "User is deleted");
 	}
 
 	if (user.password === null && user.googleid !== null) {
-		throw new Error("User registered with Google. Please login with Google.");
+		throw new AppError(
+			httpStatus.BAD_REQUEST,
+			"User registered with Google. Please login with Google.",
+		);
 	}
 
 	const isPasswordMatched = await bcrypt.compare(
@@ -235,7 +241,7 @@ const loginUser = async (payload: ILoginUserPayload) => {
 	);
 
 	if (!isPasswordMatched) {
-		throw new Error("Invalid credentials");
+		throw new AppError(httpStatus.UNAUTHORIZED, "Invalid credentials");
 	}
 
 	const jwtPayload = {
