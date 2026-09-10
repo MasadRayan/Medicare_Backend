@@ -357,6 +357,8 @@ const bookAppointmentPaymentCallback = async (query: Record<string, any>) => {
 				},
 			});
 
+			
+
 			await transporter.sendMail({
 				from: config.email_sender,
 				to: appointment.patient.email,
