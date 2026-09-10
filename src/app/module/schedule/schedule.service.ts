@@ -72,6 +72,6 @@ const createSchedule = async (
 	return schedule;
 };
 
-export const scheduleService = {
+export const ScheduleServices = {
 	createSchedule,
 };
