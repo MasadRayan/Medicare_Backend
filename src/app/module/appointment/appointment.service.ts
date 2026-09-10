@@ -1,6 +1,7 @@
 import {
 	AppointmentStatus,
 	PaymentStatus,
+    ScheduleStatus,
 } from "../../../generated/prisma/enums";
 import httpStatus from "http-status";
 import config from "../../config";
@@ -8,13 +9,105 @@ import { getBkashIdToken } from "../../lib/bkash";
 import { prisma } from "../../lib/prisma";
 import type { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
+import { IBookAppointmentPayload } from "./appointment.interface";
+import { isAfter, isSameDay } from "date-fns";
 
-const bookAppointment = async (payload: any, user: RequestUser) => {
+const bookAppointment = async (payload: IBookAppointmentPayload, user: RequestUser) => {
 	const transactionResult = await prisma.$transaction(async (tx) => {
 		//business logic for booking appointment will be here
+
+		const patient = await tx.patient.findUnique({
+			where: {
+				userId: user.userId,
+			},
+		})
+
+		if (!patient) {
+			throw new AppError(httpStatus.NOT_FOUND, "Patient not found");
+		}
+
+		const schedule = await tx.schedule.findUnique({
+			where: {
+				id: payload.scheduleId,
+			},
+			include: {
+				doctor: true,
+			}
+		});
+
+		if (!schedule || schedule.isDeleted) {
+			throw new AppError(httpStatus.NOT_FOUND, "Schedule not found");
+		}
+
+		if (schedule.status !== ScheduleStatus.PUBLISHED) {
+			throw new AppError(httpStatus.BAD_REQUEST, "Schedule is not published");
+		}
+
+		const now = new Date();
+
+		if (!isSameDay(now, schedule.startDateTime)) {
+			throw new AppError(httpStatus.BAD_REQUEST, "Schedule is not for today");
+		}
+
+		if (isAfter(now, schedule.startDateTime)) {
+			throw new AppError(httpStatus.BAD_REQUEST, "Schedule is in the past");
+		}
+
+		if (schedule.totalSlots === schedule.availableSlots) {
+			throw new AppError(httpStatus.BAD_REQUEST, "Schedule is fully booked");
+		}
+
+		const existingAppointment = await tx.appointment.findFirst({
+			where: {
+				patientId: patient.id,
+				scheduleId: schedule.id,
+				
+			},
+		});
+
+		if (existingAppointment?.status === AppointmentStatus.PENDING) {
+			throw new AppError(
+				httpStatus.BAD_REQUEST,
+				"You already have a pending appointment for this schedule",
+			);
+		}
+
+		if (existingAppointment?.status === AppointmentStatus.COMPLETED) {
+			throw new AppError(
+				httpStatus.BAD_REQUEST,
+				"You already have a completed appointment for this schedule",
+			);
+		}
+
+		if (existingAppointment?.status === AppointmentStatus.ONGOING) {
+			throw new AppError(
+				httpStatus.BAD_REQUEST,
+				"You already have an ongoing appointment for this schedule",
+			);
+		}
+
+		if (existingAppointment?.status === AppointmentStatus.CONFIRMED) {
+			throw new AppError(
+				httpStatus.BAD_REQUEST,
+				"You already have a confirmed appointment for this schedule",
+			);
+		}
+
+		if (!schedule.doctor.consultationFee) {
+			throw new AppError(
+				httpStatus.BAD_REQUEST,
+				"Consultation fee is not set for this doctor",
+			);
+		}
+
+		const amount = schedule.doctor.consultationFee.toString();
+
 		const appointment = await tx.appointment.create({
 			data: {
 				status: AppointmentStatus.PENDING,
+				patientId: patient.id,
+				doctorId: schedule.doctorId,
+				scheduleId: schedule.id,
 			},
 		});
 
@@ -41,7 +134,7 @@ const bookAppointment = async (payload: any, user: RequestUser) => {
 					payerReference: user.email,
 					callbackURL: `${config.bkash_callback_url}/appointment/book-appointment/payment/callback`,
 					merchantAssociationInfo: "MI05MID54RF09123456One",
-					amount: "1200",
+					amount: amount,
 					currency: "BDT",
 					intent: "sale",
 					merchantInvoiceNumber: appointment.id,
@@ -63,7 +156,7 @@ const bookAppointment = async (payload: any, user: RequestUser) => {
 		await tx.payment.create({
 			data: {
 				merchantInvoiceNumber: bkashCreatePaymentResult.merchantInvoiceNumber,
-				amount: "1200",
+				amount: amount,
 				currency: "BDT",
 				appointmentId: appointment.id,
 				bkashPaymentId: bkashCreatePaymentResult.paymentID,
