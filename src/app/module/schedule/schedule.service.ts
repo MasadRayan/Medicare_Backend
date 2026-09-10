@@ -402,9 +402,53 @@ const publishSchedule = async(scheduleId: string, user: RequestUser) => {
   return updatedSchedule;
 };
 
-const deleteSchedule = async() => {
+const deleteSchedule = async(scheduleId: string, user: RequestUser) => {
+  const doctor = await prisma.doctor.findUnique({
+    where: {
+      userId: user.userId,
+    },
+  });
 
-}
+  if (!doctor) {
+    throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
+  }
+
+  const schedule = await prisma.schedule.findUnique({
+    where: {
+      id: scheduleId,
+    },
+  });
+
+  if (!schedule || schedule.isDeleted) {
+    throw new AppError(httpStatus.NOT_FOUND, "Schedule not found");
+  }
+
+  if (schedule.doctorId !== doctor.id) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "You are not authorized to delete this schedule",
+    );
+  }
+
+  if (schedule.status === ScheduleStatus.PUBLISHED && schedule.totalSlots !== schedule.availableSlots) {
+    throw new AppError(
+      httpStatus.CONFLICT,
+      "Cannot delete schedule that has already been published and has booked appointments",
+    );
+  }
+
+  const deletedSchedule = await prisma.schedule.update({
+    where: {
+      id: scheduleId,
+    },
+    data: {
+      isDeleted: true,
+      deletedAt: new Date(),
+    },
+  });
+
+  return deletedSchedule;
+};
 
 export const ScheduleServices = {
   createSchedule,
