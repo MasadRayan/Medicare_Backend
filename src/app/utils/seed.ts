@@ -1,20 +1,20 @@
 import bcrypt from "bcryptjs";
 import httpStatus from "http-status";
-import { Role } from "../../generated/prisma/client";
-import { prisma } from "../lib/prisma";
+import { DoctorverificationStatus, Role } from "../../generated/prisma/enums";
 import config from "../config";
+import { prisma } from "../lib/prisma";
 import { AppError } from "./AppError";
 
 export const seedSuperAdmin = async () => {
 	try {
-		const isSuperAdminExists = await prisma.user.findFirst({
+		const isSuperAdminExist = await prisma.user.findFirst({
 			where: {
 				role: Role.SUPER_ADMIN,
 			},
 		});
 
-		if (isSuperAdminExists) {
-			console.log("Super Admin Already Exists");
+		if (isSuperAdminExist) {
+			console.log("Super Admin Already Exists!");
 			return;
 		}
 
@@ -23,11 +23,13 @@ export const seedSuperAdmin = async () => {
 		const password = config.super_admin_password;
 
 		if (!name || !email || !password) {
-			console.error("Missing required super admin details");
-			return;
+			throw new AppError(
+				httpStatus.INTERNAL_SERVER_ERROR,
+				"Super Admin Name , Email, Password Missing In Env File!!!",
+			);
 		}
 
-		const hashedPass = await bcrypt.hash(
+		const hashedPassword = await bcrypt.hash(
 			password,
 			Number(config.bcrypt_salt_rounds),
 		);
@@ -36,16 +38,17 @@ export const seedSuperAdmin = async () => {
 			data: {
 				name,
 				email,
-				password: hashedPass,
+				password: hashedPassword,
 				role: Role.SUPER_ADMIN,
-				emailVerified: true,
 				needPasswordChange: false,
+				emailVerified: true,
 			},
 		});
 
-		console.log("Super Admin Created", superAdmin);
+		console.log("Super Admin Created : ", superAdmin);
 	} catch (error) {
-		console.error("Error seeding super admin:", error);
+		console.log("Error Seeding Super Admin : ", error);
+
 		await prisma.user.delete({
 			where: {
 				email: config.super_admin_email,
@@ -53,6 +56,8 @@ export const seedSuperAdmin = async () => {
 		});
 	}
 };
+
+//create tester admin
 
 export const seedTesterAdmin = async () => {
 	try {
@@ -123,7 +128,7 @@ export const seedTesterDoctor = async () => {
 
 		const name = config.tester_doctor_name;
 		const email = config.tester_doctor_email;
-		const password = config.tester_admin_password;
+		const password = config.tester_doctor_password;
 
 		if (!name || !email || !password) {
 			throw new AppError(
@@ -150,11 +155,10 @@ export const seedTesterDoctor = async () => {
 						email,
 						name,
 						experienceYears: 5,
-						licenseNumber: "DOC123456",
-						specialization: "General Medicine",
-						contactNumber: "1234567890",
-						qualifications: "MBBS, MD",
-						consultationFee: 100,
+						licenseNumber: "BMDC0000",
+						qualifications: "MBBS",
+						specialization: "Neurology",
+						verificationStatus: DoctorverificationStatus.APPROVED,
 					},
 				},
 			},
