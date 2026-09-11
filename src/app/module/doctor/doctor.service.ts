@@ -15,6 +15,7 @@ import { transporter } from "../../lib/nodemailer";
 import type {
 	IApplyAsDoctorPayload,
 	IApproveDoctorPayload,
+	IUpdateDoctorProfilePayload,
 	IVerifyDoctorEmailPayload,
 } from "./doctor.inetrface";
 import type { RequestUser } from "../../middleware/checkAuth";
@@ -397,9 +398,33 @@ const getAllDoctors = async (query: IQuery) => {
 	};
 };
 
+const updateDoctorProfile = async (payload: IUpdateDoctorProfilePayload, user: RequestUser) => {
+	const doctor = await prisma.doctor.findUnique({
+		where: {
+			userId: user.userId,
+		},
+	});
+
+	if (!doctor) {
+		throw new AppError(httpStatus.NOT_FOUND, "Doctor not found");
+	}
+
+	const updatedDoctor = await prisma.doctor.update({
+		where: {
+			id: doctor.id,
+		},
+		data: payload
+	});
+
+	return updatedDoctor;
+}
+
+
+
 export const DoctorServices = {
 	applyAsDoctor,
 	verifyDoctorEmail,
 	approveDoctor,
 	getAllDoctors,
+	updateDoctorProfile
 };
