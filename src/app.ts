@@ -17,6 +17,7 @@ import { AppointmentRoutes } from "./app/module/appointment/appointment.route";
 import { DoctorRoutes } from "./app/module/doctor/doctor.route";
 import { ScheduleRoutes } from "./app/module/schedule/schedule.route";
 import { PaymentRoutes } from "./app/module/payment/payment.route";
+import { PrescriptionRoutes } from "./app/module/prescription/prescription.route";
 
 const app: Application = express();
 
@@ -40,6 +41,7 @@ app.use("/api/appointment", AppointmentRoutes);
 app.use("/api/doctor", DoctorRoutes);
 app.use("/api/schedule", ScheduleRoutes);
 app.use("/api/payment", PaymentRoutes);
+app.use("/api/prescription", PrescriptionRoutes);
 
 app.get("/test", async (req: Request, res: Response, next: NextFunction) => {
 	try {
