@@ -39,7 +39,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/appointment", AppointmentRoutes);
 app.use("/api/doctor", DoctorRoutes);
 app.use("/api/schedule", ScheduleRoutes);
-app.use("/api/payment", PaymentRoutes)
+app.use("/api/payment", PaymentRoutes);
 
 app.get("/test", async (req: Request, res: Response, next: NextFunction) => {
 	try {
