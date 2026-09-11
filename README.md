@@ -1,257 +1,349 @@
-# PH Healthcare System — Backend
+# MediCare Backend — PH Healthcare System
 
-REST API for a doctor-appointment platform: patients book consultations, doctors run them, admins manage the platform. This repo is the backend only.
+REST API for **MediCare**, a doctor-appointment platform where patients book consultations with doctors, handle payments via bKash, join video consultations, and receive digital prescriptions. Doctors manage schedules and prescriptions, while Admins / Super Admins manage users and platform operations.
 
-**Stack:** Node.js · Express 5 · TypeScript · Prisma 7 · PostgreSQL · JWT auth
+> **Repository:** [`github.com/MasadRayan/Medicare_Backend`](https://github.com/MasadRayan/Medicare_Backend)
+> **Spec:** See [`Project Requirements.md`](./Project%20Requirements.md) for the full product specification.
 
-## Where the project stands today
+---
 
-This is an early build, not the finished product. Right now the only working feature is authentication — a patient can register, log in, and fetch their own profile. Appointments, doctor schedules, payments, and everything else in [`Project Requirements.md`](./Project%20Requirements.md) is planned but not built yet.
+## 1. Project Description
 
-Treat this README as a description of what the code *actually does today*, including its rough edges. A few are called out directly in [Known limitations](#known-limitations) further down — read that section before assuming something is broken on your end.
+MediCare connects **Patients** with **Doctors** for online consultations:
 
-## Prerequisites
+- **Patients** register (email/password or Google), verify email via OTP, book time slots on a doctor's published schedule for **today only**, pay upfront, receive an invoice PDF by email, join via meet link, and get prescription PDFs after completion.
+- **Doctors** apply with credentials, get verified/approved by Admins, publish daily schedules (3–8 hours, 20-min slots), set meet links, manage appointments (`PENDING → CONFIRMED → ONGOING → COMPLETED → CANCELLED`), and issue prescriptions.
+- **Admin / Super Admin** manage doctor applications, block/unblock users, create new Admins (Super Admin alone can create/block Super Admins & Admins), and view analytics.
+- **Payments** are processed through **bKash Tokenized Checkout** (sandbox). Cancellation refunds depend on timing (>1 hour before schedule start = refund).
+- Cross-cutting features: JWT auth (access + refresh via cookies), Google OAuth (patients only), OTP email verification, password reset/change/set-password flows, Cloudinary uploads (profile images, doctor resumes), Redis caching/OTP store, scheduled cron cleanup, and PDF generation.
 
-| Tool           | Version | Check with |
-| -------------- | ------- | ---------- |
-| **Node.js**    | 20+     | `node -v`  |
-| **PostgreSQL** | 14+     | `psql -V`  |
+Four roles: `SUPER_ADMIN`, `ADMIN`, `DOCTOR`, `PATIENT`.
 
-Any package manager works (npm, pnpm, yarn, bun). The examples below use `npm`.
+---
 
-## Getting started
+## 2. Live Link
 
-**1. Install dependencies**
+| Service | URL |
+|---------|-----|
+| **API (Production)** | `Not deployed yet` — run locally on `http://localhost:8000` |
+| **API (Local)** | `http://localhost:8000` — `GET /` returns `{ success, message: "Welcome to MediCare System Backend" }` |
+| **Frontend** | `http://localhost:3000` (set via `FRONTEND_URL` for CORS) |
+
+> When you deploy (e.g. Render / Vercel / Railway), replace the production URL here and set `FRONTEND_URL` / `BACKEND_URL` accordingly.
+
+---
+
+## 3. How to Install & Run
+
+### Prerequisites
+
+| Tool | Version | Check |
+|------|---------|-------|
+| Node.js | 20+ | `node -v` |
+| PostgreSQL | 14+ | `psql -V` |
+| Redis | 6+ (cloud or local) | `redis-cli ping` |
+| npm / pnpm / yarn / bun | any | `npm -v` |
+
+### Steps
+
+**1. Clone & install**
 
 ```bash
+git clone https://github.com/MasadRayan/Medicare_Backend.git
+cd Medicare_Backend
 npm install
 ```
 
-**2. Set up your environment file**
+**2. Create environment file**
 
 ```bash
 cp .env.example .env
+# then edit .env — see Section 6 for all variables
 ```
 
-Open `.env` and point `DATABASE_URL` at a Postgres database you can connect to:
-
-```
-DATABASE_URL="postgresql://YOUR_USERNAME:YOUR_PASSWORD@localhost:5432/ph_healthcare?schema=public"
-```
-
-The database doesn't need to exist beforehand — `prisma migrate dev` creates it. The other variables in `.env.example` are fine to leave as-is for local development; see [Environment variables](#environment-variables) for what each one does.
-
-**3. Generate the Prisma client**
+**3. Generate Prisma Client**
 
 ```bash
 npx prisma generate
 ```
 
-Prisma writes a typed client into `src/generated/prisma`. That folder is git-ignored, so a fresh clone never has it, and almost every file under `src/` imports from it — skip this step and nothing compiles. Re-run it any time you change a file in `prisma/schema/`.
+> The client is written to `src/generated/prisma` (git-ignored). Must be regenerated after any `prisma/schema/*.prisma` change. App will not compile without it.
 
-**4. Run the migrations**
+**4. Run database migrations**
 
 ```bash
 npx prisma migrate dev
 ```
 
-This creates the `user` and `patient` tables using the SQL already committed under `prisma/migrations/`.
+This creates tables `users`, `patients`, `doctors`, `schedules`, `appointments`, `payments`, etc.
 
 **5. Start the server**
 
 ```bash
-npm run dev
+npm run dev      # watch mode via tsx — recommended for development
 ```
 
-You should see:
+Expected logs:
 
 ```
 Connected to the database successfully.
+Connected to Redis successfully.
+Nodemailer is connected successfully.
+Super Admin Created ...  (or Already Exists)
 Server is running on port 8000
 ```
 
-Confirm it's up:
+Verify:
 
 ```bash
 curl http://localhost:8000/
-# {"success":true,"message":"Welcome to PH Healthcare System Backend"}
+# {"success":true,"message":"Welcome to MediCare System Backend"}
 ```
 
-## Environment variables
+### Other Scripts
 
-`src/app/config/index.ts` is the only place `process.env` is read — application code should import `config` from there rather than reaching for `process.env` directly.
+```bash
+npm run build        # tsc typecheck + emit to dist/
+npm start            # runs built output (uses tsx under the hood in this repo)
+npm run format:check # Biome format check
+npm run format:fix   # Biome format fix
+npm run lint:check   # Biome lint check
+npm run lint:fix     # Biome lint fix
 
-| Variable                  | What it's for                                                      |
-| -------------------------- | ------------------------------------------------------------------ |
-| `NODE_ENV`                 | `development` includes the raw error and stack trace in API error responses |
-| `PORT`                     | Port the HTTP server listens on                                    |
-| `DATABASE_URL`             | Postgres connection string, used by both Prisma and the app        |
-| `JWT_ACCESS_SECRET`        | Signing key for access tokens                                      |
-| `JWT_REFRESH_SECRET`       | Signing key for refresh tokens                                     |
-| `JWT_ACCESS_EXPIRES_IN`    | Access token lifetime (e.g. `15m`, `1d`)                            |
-| `JWT_REFRESH_EXPIRES_IN`   | Refresh token lifetime                                              |
-| `BCRYPT_SALT_ROUNDS`       | Read into config but not wired up yet — password hashing currently uses a hardcoded value (see below) |
-| `BACKEND_URL`              | Read into config but not used anywhere yet                          |
-| `FRONTEND_URL`             | Added to the CORS allowlist                                        |
+npx prisma studio    # GUI at http://localhost:5555
+npx prisma migrate dev
+npx prisma generate
+```
 
-There's no validation on startup: if a variable is missing, `config` simply holds `undefined` for it, and the app boots anyway. The first sign of trouble is usually a runtime error the moment that value is actually used — for `JWT_ACCESS_SECRET`, that means the very first login or registration.
+> **Note on `npm run build`:** The project uses extensionless imports (`from './app'`) resolved by `tsx`. Running `node dist/src/server.js` directly fails with `ERR_UNSUPPORTED_DIR_IMPORT`; use `npm start` which runs via `tsx`.
 
-Before deploying anywhere, replace the JWT secrets — the ones in `.env.example` are placeholders anyone can guess:
+---
+
+## 4. Folder Structure
+
+```
+.
+├── prisma/
+│   ├── config.ts               # Prisma config — loads .env, points to schema/migrations
+│   ├── schema/
+│   │   ├── schema.prisma       # generator + datasource
+│   │   ├── enums.prisma        # Role, UserStatus, Gender, AuthProvider, AppointmentStatus, PaymentStatus, DoctorverificationStatus, ScheduleStatus
+│   │   ├── user.prisma         # User model
+│   │   ├── patient.prisma      # Patient model
+│   │   ├── doctor.prisma       # Doctor model
+│   │   ├── schedule.prisma     # Schedule model
+│   │   ├── appointment.prisma  # Appointment model
+│   │   └── payment.prisma      # Payment model
+│   └── migrations/             # generated SQL (git-ignored per .gitignore in this repo)
+│
+├── src/
+│   ├── server.ts               # bootstrap: prisma + redis + nodemailer + seed + cron → app.listen
+│   ├── app.ts                  # Express app: CORS, parsers, routes, error handlers
+│   ├── generated/prisma/       # Prisma client output (git-ignored)
+│   └── app/
+│       ├── config/index.ts     # single place reading process.env via dotenv
+│       ├── interfaces/index.ts # shared TypeScript interfaces
+│       ├── lib/
+│       │   ├── prisma.ts       # shared PrismaClient (adapter-pg) — always import this
+│       │   ├── redis.ts        # Redis client
+│       │   ├── nodemailer.ts   # email transporter
+│       │   ├── cloudinary.ts   # Cloudinary config
+│       │   ├── multer.ts       # file upload handling
+│       │   ├── googleAuth.ts   # Google OAuth verification
+│       │   ├── bkash.ts        # bKash token & payment helpers
+│       │   └── corn.ts         # cron: deleteUnverifiedDoctors etc.
+│       ├── middleware/
+│       │   ├── checkAuth.ts        # auth(...roles) — JWT + role guard
+│       │   ├── validateRequest.ts  # Zod validation wrapper
+│       │   ├── globalErrorHandler.ts
+│       │   └── notFound.ts
+│       ├── utils/
+│       │   ├── catchAsync.ts
+│       │   ├── sendResponse.ts     # standard { success, statusCode, message, data } envelope
+│       │   ├── jwt.ts              # sign / verify helpers
+│       │   ├── AppError.ts
+│       │   └── seed.ts             # seedSuperAdmin / seedTesterAdmin / seedTesterDoctor
+│       ├── templates/              # EJS email templates
+│       │   ├── patient-welcome-email.ejs
+│       │   ├── user-registration.ejs
+│       │   ├── doctor-application-approved.ejs
+│       │   ├── doctor-application-rejected.ejs
+│       │   ├── forget-password.ejs
+│       │   └── reset-password-success.ejs
+│       └── module/
+│           ├── auth/           # register, login, google, me, refresh-token, forget/reset/verify
+│           │   ├── auth.route.ts
+│           │   ├── auth.controller.ts
+│           │   ├── auth.service.ts
+│           │   ├── auth.validation.ts
+│           │   └── auth.interface.ts
+│           ├── user/           # profile image upload
+│           ├── doctor/         # apply, approval, listing, profile
+│           ├── schedule/       # create/publish/update, availability
+│           ├── appointment/    # book, list (my/doctor/all), single, status transitions, cancel
+│           ├── payment/        # bKash flows, list payments
+│           ├── prescription/   # create + fetch, PDF + email
+│           └── analytics/      # role-based analytics
+│
+├── biome.json
+├── tsconfig.json
+├── package.json
+├── .env.example
+└── Project Requirements.md
+```
+
+**Module convention** — each feature under `src/app/module/<name>/`:
+
+| File | Responsibility |
+|------|---------------|
+| `<name>.route.ts` | Wires `auth(...roles)` + `validateRequest` to controllers |
+| `<name>.controller.ts` | Reads `req`, calls service, sends `sendResponse` |
+| `<name>.service.ts` | Business logic + all Prisma calls |
+| `<name>.validation.ts` | Zod schemas |
+| `<name>.interface.ts` | TypeScript types for payloads |
+
+Routes are mounted in `src/app.ts:39-46` as `/api/auth`, `/api/user`, `/api/doctor`, `/api/schedule`, `/api/appointment`, `/api/payment`, `/api/prescription`, `/api/analytics`.
+
+---
+
+## 5. Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| **Runtime** | Node.js 20+, TypeScript 7, `tsx` |
+| **Framework** | Express 5 |
+| **Database** | PostgreSQL + Prisma 7 (Prisma Client, `@prisma/adapter-pg`, `pg`) |
+| **Auth** | JWT (`jsonwebtoken`), `bcryptjs`, Google OAuth (`google-auth-library`) |
+| **Validation** | Zod |
+| **Cache / OTP** | Redis (`redis` client) |
+| **Email** | Nodemailer + EJS templates |
+| **File Upload** | Multer + Cloudinary |
+| **Payments** | bKash Tokenized Checkout (`BKASH_*` env) |
+| **PDF** | PDFKit (invoices & prescriptions) |
+| **Scheduling** | node-cron (cleanup of unverified doctors) |
+| **Utilities** | `date-fns`, `cors`, `cookie-parser`, `dotenv`, `http-status` |
+| **Code Quality** | Biome (format & lint) |
+| **Build** | `tsc` → `dist/`, `tsx watch` for dev |
+
+---
+
+## 6. Environment Variables
+
+All variables are read in `src/app/config/index.ts:6-43` via `dotenv`. The app does **not** validate them on boot — missing values surface as runtime errors (e.g. JWT sign fails on first login).
+
+Copy `.env.example` to `.env` and fill every value:
+
+```env
+# ── Core ──────────────────────────────────────────────
+NODE_ENV=development
+PORT=8000
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/medicare?schema=public"
+BACKEND_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:3000
+
+# ── Auth ──────────────────────────────────────────────
+JWT_ACCESS_SECRET=change-me-generate-with-crypto-randomBytes-32-hex
+JWT_REFRESH_SECRET=change-me-generate-with-crypto-randomBytes-32-hex
+JWT_ACCESS_EXPIRES_IN=1d
+JWT_REFRESH_EXPIRES_IN=7d
+BCRYPT_SALT_ROUNDS=10
+GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+
+# ── Seed Accounts (created on server boot if not exist) ──
+SUPER_ADMIN_NAME=Super Admin
+SUPER_ADMIN_EMAIL=superadmin@example.com
+SUPER_ADMIN_PASSWORD=Super@admin12345
+
+TESTER_ADMIN_NAME=Tester Admin
+TESTER_ADMIN_EMAIL=testeradmin@example.com
+TESTER_ADMIN_PASSWORD=Tester@admin12345
+
+TESTER_DOCTOR_NAME=Tester Doctor
+TESTER_DOCTOR_EMAIL=testerdoctor@example.com
+TESTER_DOCTOR_PASSWORD=Tester@doctor12345
+
+# ── Redis ─────────────────────────────────────────────
+REDIS_USERNAME=default
+REDIS_PASSWORD=your-redis-password
+REDIS_HOST=your-redis-host.db.redis.io
+REDIS_PORT=14125
+
+# ── Email (Nodemailer / Gmail App Password) ───────────
+SMTP_USER=youremail@gmail.com
+EMAIL_SENDER=youremail@gmail.com
+SMTP_PASSWORD=your-gmail-app-password
+
+# ── Cloudinary ────────────────────────────────────────
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# ── bKash (Sandbox) ───────────────────────────────────
+BKASH_BASE_URL=https://tokenized.sandbox.bka.sh/v1.2.0-beta
+BKASH_USERNAME=sandboxTokenizedUser02
+BKASH_PASSWORD=sandboxTokenizedUser02@12345
+BKASH_APP_KEY=your-bkash-app-key
+BKASH_APP_SECRET=your-bkash-app-secret
+BKASH_CALLBACK_URL=http://localhost:8000/api/payment/callback
+```
+
+Generate strong JWT secrets:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-## Project structure
+> **Tip:** `src/app/config/index.ts` reads `APP_URL` as `bak_url` — set `BACKEND_URL` in `.env` but the code expects `APP_URL`. Ensure your `.env` key matches what `config` reads, or align them.
 
-```
-src/
-├── server.ts                       # connects to the DB, then starts listening
-├── app.ts                          # express app: cors, body parsing, routes, error handling
-├── generated/prisma/                # Prisma client — git-ignored, run `npx prisma generate`
-└── app/
-    ├── config/index.ts              # reads and exposes every environment variable
-    ├── lib/prisma.ts                # shared PrismaClient instance — always import this, don't `new` your own
-    ├── middleware/
-    │   ├── checkAuth.ts             # exports `auth(...roles)`, the JWT + role guard
-    │   ├── globalErrorHandler.ts    # turns thrown errors into JSON responses
-    │   └── notFound.ts              # catch-all for unmatched routes
-    ├── utils/
-    │   ├── catchAsync.ts            # wraps async route handlers so thrown errors reach the error handler
-    │   ├── jwt.ts                   # sign / verify helpers
-    │   └── sendResponse.ts          # the standard `{ success, statusCode, message, data }` envelope
-    └── module/
-        └── auth/                    # the one feature module that exists so far
-            ├── auth.route.ts
-            ├── auth.controller.ts
-            ├── auth.service.ts
-            └── auth.interface.ts
+---
 
-prisma/
-├── schema/
-│   ├── schema.prisma                # generator + datasource only
-│   ├── user.prisma
-│   ├── patient.prisma
-│   └── enums.prisma                 # Role, UserStatus, Gender
-└── migrations/                      # generated SQL, committed to git
-```
-
-Prisma's schema is split across multiple files, wired together by `prisma.config.ts` at the repo root. That file also loads `.env` so the Prisma CLI can see `DATABASE_URL`.
-
-**The data model:** a `User` has at most one `Patient` (1-to-1). Registering writes both rows in a single nested Prisma call. Deletes are meant to be soft — there's an `isDeleted` flag and a `deletedAt` timestamp on both models — but nothing in the codebase sets them yet; there's no delete endpoint at all right now.
-
-## The API
+## 7. API Overview
 
 Base URL: `http://localhost:8000`
 
-| Method | Path                          | Auth required | Body                         |
-| ------ | ----------------------------- | ------------- | ----------------------------- |
-| `GET`  | `/`                            | –             | health check                  |
-| `POST` | `/api/v1/auth/register`        | –             | `name`, `email`, `password`   |
-| `POST` | `/api/v1/auth/login`           | –             | `email`, `password`           |
-| `GET`  | `/api/v1/auth/me`              | yes           | –                              |
-| `POST` | `/api/v1/auth/refresh-token`   | –             | reads the `refreshToken` cookie |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/` | — | Health check |
+| `POST` | `/api/auth/register` | — | Patient registration |
+| `POST` | `/api/auth/login` | — | Login (any role, email/password) |
+| `POST` | `/api/auth/google` | — | Google login (patients only) |
+| `GET` | `/api/auth/me` | JWT | Current user profile |
+| `POST` | `/api/auth/refresh-token` | cookie | Refresh access token |
+| `POST` | `/api/auth/forget-password` | — | Send OTP to email |
+| `POST` | `/api/auth/reset-password` | — | Reset with OTP |
+| `POST` | `/api/auth/verify-email` | — | Verify email OTP |
+| `PATCH` | `/api/user/profile-image` | JWT | Upload profile image |
+| `*` | `/api/doctor/*` | varies | Doctor application, approval, listing |
+| `*` | `/api/schedule/*` | varies | Create / publish / update schedules |
+| `*` | `/api/appointment/*` | JWT | Book & manage appointments |
+| `*` | `/api/payment/*` | JWT | bKash payment & refund flows |
+| `*` | `/api/prescription/*` | JWT | Create / fetch prescriptions |
+| `*` | `/api/analytics/*` | JWT | Role-based analytics |
+| `GET` | `/test` | — | bKash connectivity test |
 
-Every response from `sendResponse` (i.e. everything except the root route) has this shape:
+Standard success envelope (via `sendResponse`):
 
 ```json
 { "success": true, "statusCode": 200, "message": "...", "data": {} }
 ```
 
-### Tokens: use the response body, not the cookies
+Auth: `Authorization: Bearer <accessToken>` or `accessToken` cookie. Tokens are issued on login/register (access + refresh).
 
-`register` and `login` return `accessToken` and `refreshToken` two ways: in the JSON body, and as cookies. **Use the JSON body.** The cookies are set with `sameSite: "none"` but `secure: false` — that combination is invalid under the cookie spec, and modern browsers silently drop the cookie rather than send it. Grab `data.accessToken` from the response and send it yourself:
+---
 
-```bash
-curl -X POST http://localhost:8000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test Patient","email":"patient@example.com","password":"password123"}'
+## 8. Creator Details
 
-curl http://localhost:8000/api/auth/me \
-  -H "Authorization: Bearer <accessToken from the response above>"
-```
+| Field | Info |
+|-------|------|
+| **Name** | Masad Rayan |
+| **Email** | masadrayan2002@gmail.com |
+| **GitHub** | [@MasadRayan](https://github.com/MasadRayan) |
+| **Repository** | [github.com/MasadRayan/Medicare_Backend](https://github.com/MasadRayan/Medicare_Backend) |
 
-`Authorization` accepts either `Bearer <token>` or the raw token with no prefix.
+Built as part of the PH Healthcare / MediCare platform. Contributions and issues welcome via GitHub.
 
-## Roles and authentication
+---
 
-Four roles exist in the schema — `SUPER_ADMIN`, `ADMIN`, `DOCTOR`, `PATIENT` — but **registration always creates a `PATIENT`.** `registerPatient` hardcodes `Role.PATIENT` and only reads `name`, `email`, and `password` out of the request body, so sending `"role": "ADMIN"` does nothing. There's no admin module and no seed script, so the other three roles aren't reachable through the API yet. To test them, register a normal user and change their `role` directly in the database with `npx prisma studio` (opens at `http://localhost:5555`) — then log in again, since the role is baked into the token at login time and an old token keeps the old role.
+## License
 
-`auth(...roles)`, exported from `checkAuth.ts`, is the route guard:
-
-```ts
-router.get('/me', auth(Role.ADMIN, Role.DOCTOR, Role.PATIENT, Role.SUPER_ADMIN), AuthController.getMe)
-```
-
-What it actually does, in order:
-
-1. Reads the token from the `accessToken` cookie, falling back to the `Authorization` header.
-2. Verifies the JWT signature.
-3. Checks the role **from the token payload** against the roles the route allows.
-4. Looks the user up in the database by matching `id`, `email`, `name`, *and* `role` all at once — if any of those four have changed since the token was issued, the lookup fails and the request is rejected, even though the account still exists.
-5. Rejects the request only if the user's `status` is exactly `BLOCKED`. It does **not** check `isDeleted` or a `DELETED` status, so a soft-deleted account can still authenticate as long as `status` wasn't also set to `BLOCKED`.
-
-## Known limitations
-
-Worth knowing before you spend time debugging what looks like your own mistake:
-
-- **Every error comes back as HTTP 500.** `globalErrorHandler` works out the "correct" status code internally but always sends the response with `500`, regardless. Read the `message` field, not the status code, to see what actually went wrong.
-- **No request validation.** Nothing checks that `email` looks like an email or that `password` meets any length requirement — Postgres and Prisma are the only things that will reject bad input, and usually not with a helpful message.
-- **`BCRYPT_SALT_ROUNDS` isn't used.** Password hashing in `auth.service.ts` calls `bcrypt.hash(password, 8)` with a hardcoded cost factor; the environment variable is read into `config` but nothing references it yet.
-- **No tests.** `npm test` is a placeholder.
-
-## Extending this starter
-
-New features go under `src/app/module/<name>/` as four files with strict responsibilities:
-
-| File                   | Responsibility                                                    |
-| ---------------------- | ------------------------------------------------------------------- |
-| `<name>.route.ts`      | Wires `auth(...roles)` to controller functions, exports `<Name>Routes` |
-| `<name>.controller.ts` | Reads `req.body` / `req.user`, calls the service, calls `sendResponse` |
-| `<name>.service.ts`    | All business logic and every Prisma call for the module              |
-| `<name>.interface.ts`  | The TypeScript types for the module's payloads                       |
-
-Then mount it in `app.ts` next to the existing line:
-
-```ts
-app.use('/api/v1/doctor', DoctorRoutes)
-```
-
-Two rules keep the module boundaries useful rather than decorative:
-
-- **Controllers never call Prisma directly**, and **services never touch `req` or `res`.** If a service needs to know who's calling it, pass it the small `{ userId, email, name, role }` shape, not the whole request.
-- **Never spread `req.body` straight into a Prisma `create`/`update`.** Destructure the exact fields you expect. With no validation layer in front of the API, that destructuring is the only thing stopping someone from sending `"role": "ADMIN"` in a request body and having it stick.
-
-## Scripts
-
-```bash
-npm run dev     # start the server with auto-reload (tsx watch) — use this while developing
-npm run build   # typecheck with tsc and emit to dist/
-npm run start   # run the server once, no watching
-```
-
-There's no `npm run generate` / `migrate` / `studio` wrapper — call Prisma's CLI directly:
-
-```bash
-npx prisma generate     # regenerate the client after editing prisma/schema/
-npx prisma migrate dev  # create + apply a migration
-npx prisma studio       # browser GUI for your data, at http://localhost:5555
-```
-
-### A note on `npm run build`
-
-`npm run build` is useful for catching type errors, but its output isn't directly runnable with `node`. The codebase uses extensionless relative imports (`from './app'`), which `tsx` resolves fine but Node's native ESM loader doesn't — running `node dist/src/server.js` fails with `ERR_UNSUPPORTED_DIR_IMPORT`. That's why `npm run start` runs the TypeScript source through `tsx` rather than executing `dist/`.
-
-## Troubleshooting
-
-**`Cannot find module '.../src/generated/prisma/client'`**
-Run `npx prisma generate` — see step 3 of [Getting started](#getting-started).
-
-**`Can't reach database server` / `ECONNREFUSED`**
-Postgres isn't running, or `DATABASE_URL` points somewhere it can't reach. Confirm with `pg_isready -h localhost -p 5432`.
-
-**`P1010: User was denied access on the database`**
-The username or password in `DATABASE_URL` doesn't match a real role on your Postgres server. `psql -c '\du'` lists the roles that actually exist; `whoami` gives you your OS username, which is usually your local superuser with no password.
-
-**Login or register throws instead of returning a token**
-Check that `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` are actually set in your `.env` — `jsonwebtoken` throws if the signing secret is `undefined`, and this project doesn't validate environment variables on startup.
+ISC
