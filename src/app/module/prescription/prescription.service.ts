@@ -1,5 +1,5 @@
 import { UploadApiResponse } from "cloudinary";
-import { AppointmentStatus } from "../../../generated/prisma/enums";
+import { AppointmentStatus, Role } from "../../../generated/prisma/enums";
 import { prisma } from "../../lib/prisma";
 import { RequestUser } from "../../middleware/checkAuth";
 import { AppError } from "../../utils/AppError";
@@ -148,7 +148,50 @@ const createPrescription = async (payload : ICreatePrescriptionPayload, user : R
 
 }
 
-const getSinglePrescription = async () => {
+const getSinglePrescription = async (appointmentId : string, user : RequestUser) => {
+    const appointment = await prisma.appointment.findUnique({
+        where: {
+            id: appointmentId,
+        },
+        include: {
+            doctor: true,
+            patient: true,
+        }
+    });
+
+    if (!appointment) {
+        throw new AppError(httpStatus.NOT_FOUND, "Appointment not found");
+    }
+
+   if (user.role === Role.PATIENT) {
+        if (appointment.patient.userId !== user.userId) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You Are Not Allowed To View This Appointment",
+            );
+        }
+    }
+    if (user.role === Role.DOCTOR) {
+        if (appointment.doctor.userId !== user.userId) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You Are Not Allowed To View This Appointment",
+            );
+        }
+    }
+
+    if (!appointment.prescriptionUrl) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "No Prescription Has Been Written Yet",
+        );
+    }
+
+    return {
+        appointment,
+        prescription : appointment.prescriptionUrl
+    }
+
 
 }
 
