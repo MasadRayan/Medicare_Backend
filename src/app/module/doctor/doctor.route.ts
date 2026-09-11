@@ -47,4 +47,19 @@ router.patch(
 	DoctorController.updateDoctorProfile
 )
 
+router.get(
+	"/public/available-today",
+	DoctorController.getAvailableDoctorByTodaysSchedule,
+);
+
+router.get(
+	"/public/all-doctors",
+	DoctorController.getAllDoctorsListPublic,
+);
+
+router.get(
+	"/public/:doctorId",
+	DoctorController.getSingleDoctorPublicProfile,
+);
+
 export const DoctorRoutes = router;
