@@ -25,7 +25,8 @@
 				"noExplicitAny": "off"
 			},
 			"complexity": {
-				"noCommaOperator": "info"
+				"noCommaOperator": "info",
+				"noUselessTernary": "off"
 			},
 			"correctness": {
 				"noUnusedFunctionParameters": "off",

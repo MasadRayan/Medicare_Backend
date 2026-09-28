@@ -39,4 +39,6 @@ router.post(
 	validateRequest(UserValidation.VerifyEmailZodSchema),
 	AuthController.verifyPatient,
 );
+
+router.post("/logout", AuthController.logOut);
 export const AuthRoutes = router;
